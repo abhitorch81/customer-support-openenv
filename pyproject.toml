@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "customer-support-openenv"
+version = "0.2.0"
+description = "Official OpenEnv customer support ticket resolution environment for the OpenEnv hackathon."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "openenv-core[core]>=0.2.2",
+  "fastapi>=0.115.0",
+  "openai>=1.66.0",
+  "pydantic>=2.10.0",
+  "pyyaml>=6.0.2",
+  "requests>=2.32.0",
+  "uvicorn>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+customer-support-server = "customer_support_env.server.app:main"
+customer-support-baseline = "customer_support_env.baseline:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["customer_support_env*", "server*"]
