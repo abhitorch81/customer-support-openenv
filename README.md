@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 7860
-short_description: Official OpenEnv customer support ticket resolution environment with deterministic tasks, graders, and baselines.
+short_description: OpenEnv customer support ticket environment
 ---
 
 # Customer Support OpenEnv
