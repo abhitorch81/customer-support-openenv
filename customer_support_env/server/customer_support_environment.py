@@ -216,6 +216,10 @@ class SupportTicketEnvironment(
             "closed": 1.0 if state.closed else 0.0,
             "workflow_discipline": round(self._workflow_discipline_score(state), 4),
         }
+        breakdown = {
+            key: round(_strict_unit_interval(float(value)), 6)
+            for key, value in breakdown.items()
+        }
 
         score = (
             0.08 * breakdown["order_lookup"]
