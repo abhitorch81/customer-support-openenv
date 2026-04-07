@@ -59,16 +59,47 @@ class OpenAIPolicy:
             base_url=os.environ.get("API_BASE_URL", DEFAULT_API_BASE_URL),
         )
         self.model_name = model_name
+        # Fail-safe: if the OpenAI call or parsing fails, use the deterministic policy
+        # so the baseline pipeline can't crash mid-episode.
+        self._fallback_policy = HeuristicPolicy()
 
     def act(self, observation: SupportObservation) -> SupportAction:
         prompt = self._build_prompt(observation)
-        response = self.client.responses.create(
-            model=self.model_name,
-            input=prompt,
-        )
-        payload = _extract_first_json_object(response.output_text)
-        data = json.loads(payload)
-        return SupportAction.model_validate(data)
+
+        try:
+            response = self.client.responses.create(
+                model=self.model_name,
+                input=prompt,
+            )
+            output_text = self._extract_response_text(response)
+            payload = _extract_first_json_object(output_text)
+            data = json.loads(payload)
+            return SupportAction.model_validate(data)
+        except Exception:
+            # Any error (network/auth, unexpected response shape, invalid JSON, pydantic validation)
+            # should not crash the pipeline.
+            return self._fallback_policy.act(observation)
+
+    @staticmethod
+    def _extract_response_text(response: object) -> str:
+        """Best-effort extraction of assistant text from an OpenAI Responses API object."""
+        # Newer SDKs often provide `output_text`.
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str) and output_text.strip():
+            return output_text
+
+        # Fallback to the first text content we can find.
+        try:
+            for item in getattr(response, "output", []) or []:
+                for content in getattr(item, "content", []) or []:
+                    text = getattr(content, "text", None)
+                    if isinstance(text, str) and text.strip():
+                        return text
+        except Exception:
+            pass
+
+        # Last resort: stringify the response so braces parsing can still work if present.
+        return str(response)
 
     def _build_prompt(self, observation: SupportObservation) -> str:
         schema = {
@@ -98,6 +129,7 @@ class OpenAIPolicy:
 def run_baseline(policy_name: str, model_name: str | None = None) -> BaselineRunResult:
     env = SupportTicketEnvironment()
     policy = _build_policy(policy_name=policy_name, model_name=model_name)
+    fallback_policy = HeuristicPolicy()
     results: list[BaselineEpisodeResult] = []
 
     for task in env.list_tasks():
@@ -106,7 +138,11 @@ def run_baseline(policy_name: str, model_name: str | None = None) -> BaselineRun
         done = observation.done
 
         while not done:
-            action = policy.act(observation)
+            try:
+                action = policy.act(observation)
+            except Exception:
+                # Phase fail-fast safety: never let a single step break the entire pipeline.
+                action = fallback_policy.act(observation)
             observation = env.step(action)
             done = observation.done
 
