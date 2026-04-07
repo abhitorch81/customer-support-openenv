@@ -25,6 +25,16 @@ from ..models import (
 )
 
 
+def _strict_unit_interval(value: float) -> float:
+    """Return a score strictly inside (0, 1) for validator compatibility."""
+    eps = 1e-6
+    if value <= 0.0:
+        return eps
+    if value >= 1.0:
+        return 1.0 - eps
+    return value
+
+
 class SupportTicketEnvironment(
     Environment[SupportAction, SupportObservation, SupportState]
 ):
@@ -225,6 +235,7 @@ class SupportTicketEnvironment(
             0.04 * state.invalid_action_count + 0.015 * max(0, state.step_count - step_budget),
         )
         score = max(0.0, min(1.0, round(score - penalty, 4)))
+        score = round(_strict_unit_interval(score), 6)
 
         return GraderResult(
             task_id=state.task_id,
