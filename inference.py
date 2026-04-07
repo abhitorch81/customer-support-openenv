@@ -58,11 +58,12 @@ def main() -> None:
         print(f"[inference] OpenAI baseline failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         print("[STEP] step=2 action=run_baseline_heuristic_fallback", flush=True)
         result = run_baseline(policy_name="heuristic", model_name=None)
+    safe_average = _strict_unit_interval(result.average_score)
     for index, item in enumerate(result.results, start=1):
         safe_score = _strict_unit_interval(item.score)
         print(f"[START] task={item.task_id} policy={result.policy_name}", flush=True)
         print(
-            f"[STEP] step={index + 2} task={item.task_id} score={safe_score:.6f} steps={item.steps}",
+            f"[STEP] step={index + 2} reward={item.total_reward:.4f}",
             flush=True,
         )
         print(
@@ -70,7 +71,7 @@ def main() -> None:
             flush=True,
         )
     print(
-        f"[END] task=baseline score={result.average_score} episodes={len(result.results)} status=success",
+        f"[END] task=baseline score={safe_average:.6f} episodes={len(result.results)} status=success",
         flush=True,
     )
     print(_sanitize_baseline_result_for_validator(result), flush=True)
