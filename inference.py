@@ -6,6 +6,16 @@ import sys
 from customer_support_env.baseline import run_baseline
 
 
+def _strict_unit_interval(value: float) -> float:
+    """Return a score strictly inside (0, 1) for validator parsing."""
+    eps = 1e-6
+    if value <= 0.0:
+        return eps
+    if value >= 1.0:
+        return 1.0 - eps
+    return value
+
+
 def main() -> None:
     api_base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
     model_name = os.getenv("MODEL_NAME", "openai/gpt-4.1-mini")
@@ -31,13 +41,14 @@ def main() -> None:
         print("[STEP] step=2 action=run_baseline_heuristic_fallback", flush=True)
         result = run_baseline(policy_name="heuristic", model_name=None)
     for index, item in enumerate(result.results, start=1):
+        safe_score = _strict_unit_interval(item.score)
         print(f"[START] task={item.task_id} policy={result.policy_name}", flush=True)
         print(
-            f"[STEP] step={index + 2} task={item.task_id} score={item.score} steps={item.steps}",
+            f"[STEP] step={index + 2} task={item.task_id} score={safe_score:.6f} steps={item.steps}",
             flush=True,
         )
         print(
-            f"[END] task={item.task_id} score={item.score} steps={item.steps} grader=deterministic",
+            f"[END] task={item.task_id} score={safe_score:.6f} steps={item.steps} grader=deterministic",
             flush=True,
         )
     print(
