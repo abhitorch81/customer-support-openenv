@@ -31,8 +31,13 @@ def main() -> None:
         print("[STEP] step=2 action=run_baseline_heuristic_fallback", flush=True)
         result = run_baseline(policy_name="heuristic", model_name=None)
     for index, item in enumerate(result.results, start=1):
+        print(f"[START] task={item.task_id} policy={result.policy_name}", flush=True)
         print(
             f"[STEP] step={index + 2} task={item.task_id} score={item.score} steps={item.steps}",
+            flush=True,
+        )
+        print(
+            f"[END] task={item.task_id} score={item.score} steps={item.steps} grader=deterministic",
             flush=True,
         )
     print(
