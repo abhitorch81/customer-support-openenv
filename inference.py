@@ -18,7 +18,8 @@ from customer_support_env.baseline import run_baseline
 
 def _strict_unit_interval(value: float) -> float:
     """Return a score strictly inside (0, 1) for validator parsing."""
-    eps = 1e-6
+    # Use a margin large enough so formatting (e.g. :.6f) cannot round to exactly 0.0 or 1.0.
+    eps = 1e-4
     if value <= 0.0:
         return eps
     if value >= 1.0:
