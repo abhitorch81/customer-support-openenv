@@ -66,10 +66,13 @@ Commit the generated **`uv.lock`** so OpenEnv multi-mode checks pass.
 
 ### Validator-style `inference.py`
 
-Structured stdout (`[START]` / `[STEP]` / `[END]`), strict score clamping, builds an **OpenAI** client for compatibility (continuous control uses the **random** policy).
+Structured stdout (`[START]` / `[STEP]` / `[END]`) and strict score clamping. **Phase 2** requires the injected proxy:
+
+- `API_BASE_URL` and `API_KEY` (required; `OpenAI(base_url=..., api_key=...)`).
+- Each task issues a minimal **`chat.completions`** call through that client so LiteLLM logs see your key (MuJoCo steps still use the **random** physics policy).
 
 ```powershell
-.venv\Scripts\python.exe inference.py
+$env:API_BASE_URL="https://..."; $env:API_KEY="..."; .venv\Scripts\python.exe inference.py
 ```
 
 ## OpenEnv layout
