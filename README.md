@@ -5,7 +5,7 @@ colorFrom: gray
 colorTo: green
 sdk: docker
 app_port: 7860
-short_description: OpenEnv MuJoCo continuous control (Gymnasium v5) — multi-task suite
+short_description: OpenEnv MuJoCo (Gymnasium v5): 3 continuous-control tasks
 ---
 
 # MuJoCo Gym OpenEnv
