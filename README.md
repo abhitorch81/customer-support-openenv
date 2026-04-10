@@ -66,14 +66,26 @@ Commit the generated **`uv.lock`** so OpenEnv multi-mode checks pass.
 
 ### Validator-style `inference.py`
 
-Structured stdout (`[START]` / `[STEP]` / `[END]`) and strict score clamping. **Phase 2** requires the injected proxy:
+Matches the **hackathon inference spec**:
 
-- `API_BASE_URL` and `API_KEY` (required; `OpenAI(base_url=..., api_key=...)`).
-- Each task issues a minimal **`chat.completions`** call through that client so LiteLLM logs see your key (MuJoCo steps still use the **random** physics policy).
+| Variable | Role |
+|----------|------|
+| `API_BASE_URL` | LLM endpoint (default: `https://router.huggingface.co/v1`) |
+| `MODEL_NAME` | Model id (default: `openai/gpt-4.1-mini`) |
+| `HF_TOKEN` | **Preferred** API key for the proxy (same as Hugging Face token) |
+| `API_KEY` | Alternative if `HF_TOKEN` is unset |
+| `BENCHMARK` | Logged as `env=` in `[START]` (default: `mujoco_gym_env`) |
+| `LOCAL_IMAGE_NAME` / `IMAGE_NAME` | For `from_docker_image()` flows only; read for compatibility, unused in-process |
+
+- **OpenAI client:** `OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or API_KEY)`.
+- **LLM traffic:** each task does a minimal **`chat.completions`** (fallback **`responses`**) so LiteLLM sees your key; MuJoCo torques stay **random** for stability.
+- **Stdout:** only `[START]` → one `[STEP]` per `env.step()` → `[END]` after `env.close()` (always, including on errors). Rewards **`%.2f`**; end score **`%.2f`** in `[0, 1]`.
 
 ```powershell
-$env:API_BASE_URL="https://..."; $env:API_KEY="..."; .venv\Scripts\python.exe inference.py
+$env:HF_TOKEN="..."; .venv\Scripts\python.exe inference.py
 ```
+
+Local validation (optional): Docker build + `openenv validate` as in the official `validate-submission.sh` pattern (Dockerfile at **repo root**).
 
 ## OpenEnv layout
 
