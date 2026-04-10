@@ -23,6 +23,6 @@ Tasks are registered in `mujoco_gym_env/server/mujoco_gym_environment.py` (`_TAS
 
 ## Deployment
 
-- **Dockerfile** — `python:3.11-slim-bookworm`, `pip install -r requirements.txt`, `uvicorn mujoco_gym_env.server.app:app`, `PORT` default `7860` for Hugging Face Spaces.
+- **Dockerfile** — `python:3.11-slim-bookworm`, `pip install -r requirements.txt`, `uvicorn server.app:app`, `PORT` default `7860` for Hugging Face Spaces.
 - **`GET /health`** — `{"status":"healthy"}`.
-- **`openenv.yaml`** — `app: mujoco_gym_env.server.app:app`, `port: 7860`.
+- **`openenv.yaml`** — `app: server.app:app`, `port: 7860` (multi-mode tooling); implementation in `mujoco_gym_env/server/app.py`.

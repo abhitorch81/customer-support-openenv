@@ -56,6 +56,14 @@ python -m venv .venv
 .venv\Scripts\python.exe -m mujoco_gym_env.baseline
 ```
 
+### Lockfile (multi-mode / `uv`)
+
+```powershell
+uv lock --python 3.11
+```
+
+Commit the generated **`uv.lock`** so OpenEnv multi-mode checks pass.
+
 ### Validator-style `inference.py`
 
 Structured stdout (`[START]` / `[STEP]` / `[END]`), strict score clamping, builds an **OpenAI** client for compatibility (continuous control uses the **random** policy).
@@ -70,7 +78,7 @@ Structured stdout (`[START]` / `[STEP]` / `[END]`), strict score clamping, build
 |--------|------|
 | Models | [mujoco_gym_env/models.py](mujoco_gym_env/models.py) |
 | Environment | [mujoco_gym_env/server/mujoco_gym_environment.py](mujoco_gym_env/server/mujoco_gym_environment.py) |
-| Server | [mujoco_gym_env/server/app.py](mujoco_gym_env/server/app.py) |
+| Server | [mujoco_gym_env/server/app.py](mujoco_gym_env/server/app.py); HF / multi-mode entry [server/app.py](server/app.py) |
 | Client | [mujoco_gym_env/client.py](mujoco_gym_env/client.py) |
 | Manifest | [openenv.yaml](openenv.yaml) |
 
@@ -85,6 +93,9 @@ Structured stdout (`[START]` / `[STEP]` / `[END]`), strict score clamping, build
 │   └── server/
 │       ├── app.py
 │       └── mujoco_gym_environment.py
+├── server/
+│   ├── __init__.py
+│   └── app.py
 ├── scripts/
 │   ├── run_baseline.py
 │   └── smoke_mujoco_gym.py

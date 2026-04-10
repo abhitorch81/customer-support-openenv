@@ -26,12 +26,12 @@ dev = [
 ]
 
 [project.scripts]
-server = "mujoco_gym_env.server.app:main"
-mujoco-gym-server = "mujoco_gym_env.server.app:main"
+server = "server.app:main"
+mujoco-gym-server = "server.app:main"
 mujoco-gym-baseline = "mujoco_gym_env.baseline:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["mujoco_gym_env*"]
+include = ["mujoco_gym_env*", "server*"]

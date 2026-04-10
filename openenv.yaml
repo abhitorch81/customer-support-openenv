@@ -6,5 +6,5 @@ description: >
   vector observations, boxed actions, deterministic grader, FastAPI + WebSocket, /health.
 type: space
 runtime: fastapi
-app: mujoco_gym_env.server.app:app
+app: server.app:app
 port: 7860
