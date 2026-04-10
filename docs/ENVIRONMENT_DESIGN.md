@@ -10,6 +10,8 @@ This package follows the **three-component pattern** emphasized in [OpenEnv tuto
 
 **Client** (`customer_support_env/client.py`) mirrors reference Hub repos: thin `EnvClient` for remote training or evaluation.
 
+**Optional MuJoCo** (`mujoco_gym_env/`) reuses the same OpenEnv server layout for Gymnasium MuJoCo (`InvertedPendulum-v5`). Install with `pip install ".[mujoco]"`, run `mujoco-gym-server`, deploy with `Dockerfile.mujoco` / `openenv-mujoco.yaml` (keep the default `Dockerfile` for the support Space only).
+
 ## Use case
 
 **Customer support operations** — agents must gather information under partial observability, follow policy text, and avoid destructive shortcuts (premature resolution, bad close, unnecessary escalation). This is complementary to tool-heavy reference envs ([calendar](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/calendar_env), [reasoning_gym](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/reasoning_gym_env), [repl](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/repl_env)): same OpenEnv contracts, different domain.

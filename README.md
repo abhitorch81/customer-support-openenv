@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 7860
-short_description: OpenEnv customer support ticket environment
+short_description: OpenEnv customer support + optional MuJoCo Gym server (monorepo)
 ---
 
 # Customer Support OpenEnv
@@ -139,6 +139,12 @@ This repo follows the official OpenEnv creator pattern (see also [OpenEnv tutori
 - [customer_support_env/server/app.py](customer_support_env/server/app.py): FastAPI app with OpenEnv WebSocket server plus hackathon HTTP endpoints
 - [openenv.yaml](openenv.yaml): OpenEnv manifest (port aligned with Docker Space: `7860`)
 
+This monorepo also ships an **optional MuJoCo** OpenEnv (same HTTP/WebSocket pattern, separate image):
+
+- [mujoco_gym_env/server/mujoco_gym_environment.py](mujoco_gym_env/server/mujoco_gym_environment.py): `InvertedPendulum-v5` via Gymnasium
+- [mujoco_gym_env/server/app.py](mujoco_gym_env/server/app.py): FastAPI + `HTTPEnvServer`
+- [openenv-mujoco.yaml](openenv-mujoco.yaml) and [Dockerfile.mujoco](Dockerfile.mujoco): deploy as a **second** Space (root [Dockerfile](Dockerfile) stays lightweight for customer support)
+
 ## Project structure
 
 ```text
@@ -155,12 +161,23 @@ customer_support_openenv/
 │   │   └── customer_support_environment.py
 │   └── tasks/
 │       └── catalog.json
+├── mujoco_gym_env/
+│   ├── client.py
+│   ├── environment.py
+│   ├── models.py
+│   └── server/
+│       ├── __main__.py
+│       ├── app.py
+│       └── mujoco_gym_environment.py
 ├── scripts/
-│   └── run_baseline.py
+│   ├── run_baseline.py
+│   └── smoke_mujoco_gym.py
 ├── docs/
 │   └── ENVIRONMENT_DESIGN.md
 ├── Dockerfile
+├── Dockerfile.mujoco
 ├── openenv.yaml
+├── openenv-mujoco.yaml
 ├── pyproject.toml
 └── requirements.txt
 ```
@@ -181,6 +198,14 @@ python -m venv .venv
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+**MuJoCo (optional, same repo):**
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[mujoco]"
+.venv\Scripts\python.exe scripts\smoke_mujoco_gym.py
+mujoco-gym-server
 ```
 
 If PowerShell script activation is enabled on your machine, you can also activate the venv normally. Otherwise, just keep using `.venv\Scripts\python.exe`.

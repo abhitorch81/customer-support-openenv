@@ -1,0 +1,10 @@
+spec_version: 1
+name: mujoco_gym_env
+version: "0.1.0"
+description: >
+  Gymnasium MuJoCo continuous control (InvertedPendulum-v5) as OpenEnv: vector obs,
+  boxed actions, FastAPI + WebSocket server, /health. Use Dockerfile.mujoco and pip install ".[mujoco]".
+type: space
+runtime: fastapi
+app: mujoco_gym_env.server.app:app
+port: 7860
