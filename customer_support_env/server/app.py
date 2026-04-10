@@ -19,7 +19,7 @@ from .customer_support_environment import SupportTicketEnvironment
 app = FastAPI(
     title="Customer Support OpenEnv",
     description="Official OpenEnv customer support ticket resolution environment.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 openenv_server = HTTPEnvServer(
@@ -40,8 +40,24 @@ def root() -> dict[str, object]:
         "status": "ok",
         "framework": "openenv",
         "task_count": len(http_env.list_tasks()),
-        "endpoints": ["/reset", "/step", "/state", "/tasks", "/grader", "/baseline", "/ws"],
+        "endpoints": [
+            "/health",
+            "/reset",
+            "/step",
+            "/state",
+            "/tasks",
+            "/grader",
+            "/baseline",
+            "/docs",
+            "/ws",
+        ],
     }
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Liveness probe for Spaces, k8s, and local validate scripts (OpenEnv deployment pattern)."""
+    return {"status": "healthy"}
 
 
 @app.post("/reset", response_model=ResetResponse)

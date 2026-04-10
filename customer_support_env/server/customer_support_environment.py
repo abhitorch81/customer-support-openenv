@@ -58,7 +58,12 @@ class SupportTicketEnvironment(
         self._selected_task_id = task_id
 
     def list_tasks(self) -> list[TaskDescriptor]:
-        ordered = ["easy_damaged_mug", "medium_wrong_hoodie", "hard_laptop_policy_exception"]
+        ordered = [
+            "easy_damaged_mug",
+            "medium_wrong_hoodie",
+            "medium_late_delivery_credit",
+            "hard_laptop_policy_exception",
+        ]
         descriptors: list[TaskDescriptor] = []
         for task_id in ordered:
             task = self._catalog[task_id]
@@ -190,7 +195,7 @@ class SupportTicketEnvironment(
         return EnvironmentMetadata(
             name="customer_support_env",
             description="Customer support ticket resolution environment with deterministic graders.",
-            version="0.2.0",
+            version="0.3.0",
             author="Codex + user",
         )
 

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "customer-support-openenv"
-version = "0.2.0"
-description = "Official OpenEnv customer support ticket resolution environment for the OpenEnv hackathon."
+version = "0.3.0"
+description = "OpenEnv customer support ticket environment with four graded tasks, typed HTTP/WebSocket API, and deterministic grader."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -107,5 +107,42 @@
       ],
       "escalation_required": true
     }
+  },
+  {
+    "task_id": "medium_late_delivery_credit",
+    "difficulty": "medium",
+    "description": "Customer requests compensation for a materially late delivery; the agent must verify the receipt timeline before applying the policy partial-refund path.",
+    "objective": "Look up order and policy, collect delivery_date_confirmation, classify the service failure, and issue the partial refund resolution without escalating.",
+    "ticket_id": "TCK-2418",
+    "customer_message": "My desk lamp order was supposed to arrive within five business days but showed up twelve days after the promised window. I want the 15 percent late-delivery credit your policy mentions.",
+    "initial_order_view": {
+      "order_id": "ORD-4410",
+      "item_name": "Adjustable Desk Lamp",
+      "order_total_usd": 79.0
+    },
+    "order": {
+      "order_id": "ORD-4410",
+      "item_name": "Adjustable Desk Lamp",
+      "order_total_usd": 79.0,
+      "days_since_delivery": 2,
+      "carrier_status": "delivered",
+      "promised_delivery_days": 5,
+      "actual_transit_days": 17,
+      "fraud_risk": "low",
+      "customer_tier": "standard"
+    },
+    "policy": "Orders delivered more than 7 calendar days after the promised ship-by window qualify for a 15% partial refund on the item subtotal once the customer confirms the actual receipt date. Agents must collect delivery_date_confirmation in the ticket before choose decide_resolution. This path does not require escalation for standard-tier orders under $250.",
+    "customer_data": {
+      "delivery_date_confirmation": "Customer confirms the package arrived on the date shown in tracking, twelve days after the original delivery estimate."
+    },
+    "ground_truth": {
+      "issue_type": "wrong_item",
+      "priority": "normal",
+      "resolution": "refund",
+      "required_info": [
+        "delivery_date_confirmation"
+      ],
+      "escalation_required": false
+    }
   }
 ]

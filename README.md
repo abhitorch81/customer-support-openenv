@@ -35,19 +35,37 @@ This environment models a genuine operational workflow rather than a toy task. I
 
 ## Tasks
 
-The environment ships with 3 deterministic tasks:
+The environment ships with **4 deterministic tasks** (ordered easy → medium → hard):
 
-1. `easy_damaged_mug`
-   Difficulty: easy
-   Objective: replace a clearly damaged order with enough information already available.
+1. `easy_damaged_mug`  
+   **Difficulty:** easy  
+   **Objective:** Replace a clearly damaged order with enough information already available.
 
-2. `medium_wrong_hoodie`
-   Difficulty: medium
-   Objective: resolve a wrong-item ticket, but only after collecting verification and choosing refund vs replacement based on stock and customer preference.
+2. `medium_wrong_hoodie`  
+   **Difficulty:** medium  
+   **Objective:** Resolve a wrong-item ticket after collecting verification and choosing refund vs replacement based on stock and customer preference.
 
-3. `hard_laptop_policy_exception`
-   Difficulty: hard
-   Objective: handle a damaged high-value order outside the normal policy window that requires evidence collection, exception escalation, and disciplined manual-review handling.
+3. `medium_late_delivery_credit`  
+   **Difficulty:** medium  
+   **Objective:** Handle a **service-level failure** (materially late delivery): open policy, collect `delivery_date_confirmation`, classify as a fulfillment issue (`wrong_item` in the schema), and apply the **partial refund** path—no unnecessary escalation.
+
+4. `hard_laptop_policy_exception`  
+   **Difficulty:** hard  
+   **Objective:** Handle a damaged high-value order outside the normal policy window that requires evidence collection, exception escalation, and disciplined manual-review handling.
+
+### Learning resources (OpenEnv patterns)
+
+To align with how strong Hub environments are built and deployed, see:
+
+- **Hands-on course:** [Building RL Environments with OpenEnv](https://github.com/raun/openenv-course/tree/main) (modules on Hub, Docker, Spaces, and building the 3-component pattern).
+- **Reference environment servers** (structure and depth to compare against):
+  - [calendar_env](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/calendar_env)
+  - [reasoning_gym_env](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/reasoning_gym_env)
+  - [tbench2_env](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/tbench2_env)
+  - [carla_env](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/carla_env)
+  - [repl_env](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/repl_env)
+
+This repo follows the same **models → environment → server app → client** layout described in the course and official OpenEnv tutorials.
 
 ## Action space
 
@@ -132,6 +150,8 @@ customer_support_openenv/
 │       └── catalog.json
 ├── scripts/
 │   └── run_baseline.py
+├── docs/
+│   └── ENVIRONMENT_DESIGN.md
 ├── Dockerfile
 ├── openenv.yaml
 ├── pyproject.toml
@@ -302,18 +322,11 @@ Suggested startup:
 
 You should treat the heuristic baseline as a smoke test and the OpenAI baseline as the reproducible submission baseline.
 
-Current verified heuristic baseline:
-
-- `easy_damaged_mug`: `1.00`
-- `medium_wrong_hoodie`: `1.00`
-- `hard_laptop_policy_exception`: `0.8728`
-- average: `0.9576`
-
-To regenerate:
+There are **four** graded tasks; per-task and average scores depend on policy and grader clamping. Print the current numbers locally:
 
 ```powershell
 .venv\Scripts\python.exe scripts\run_baseline.py --policy heuristic
-.venv\Scripts\python.exe inference.py
+.venv\Scripts\python.exe scripts\run_baseline.py --policy openai
 ```
 
-The hard task can still reach `1.0` with the correct gold path, but the heuristic baseline intentionally underperforms there to preserve task difficulty.
+The hard task can still reach a perfect grader path with the correct workflow, while the heuristic baseline may intentionally underperform there to preserve difficulty.

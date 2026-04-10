@@ -1,9 +1,10 @@
 spec_version: 1
 name: customer_support_env
-version: "0.2.0"
+version: "0.3.0"
 description: >
-  OpenEnv customer support ticket environment: typed actions, deterministic grader,
-  three difficulty-tier tasks (easy / medium / hard), FastAPI + WebSocket server.
+  OpenEnv customer support operations environment: typed actions, dense step rewards,
+  deterministic multi-signal grader, four tasks (easy / medium / medium+ / hard),
+  FastAPI + WebSocket server, /health for deployment probes.
 type: space
 runtime: fastapi
 app: server.app:app

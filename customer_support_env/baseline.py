@@ -222,6 +222,8 @@ def _infer_issue_type(observation: SupportObservation) -> str:
     message = observation.customer_message.lower()
     if "wrong" in message or "received a navy" in message or "size m" in message:
         return "wrong_item"
+    if "late" in message or "delayed" in message or ("promised" in message and "arrive" in message):
+        return "wrong_item"
     if "crack" in message or "damaged" in message:
         return "damaged_item"
     return "damaged_item"
@@ -258,6 +260,14 @@ def _infer_resolution(observation: SupportObservation, issue_type: str) -> str:
         and order.get("correct_variant_in_stock") is False
         and "preferred_resolution" in customer_details
         and "refund" in customer_details["preferred_resolution"]
+    ):
+        return "refund"
+
+    if (
+        issue_type == "wrong_item"
+        and "delivery_date_confirmation" in observation.revealed_customer_details
+        and ("late" in policy or "promised" in policy or "ship-by" in policy)
+        and ("15%" in policy or "partial" in policy)
     ):
         return "refund"
 
