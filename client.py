@@ -1,1 +1,5 @@
-from customer_support_env.client import *  # noqa: F401,F403
+"""Shim for `from client import MuJoCoGymEnvClient` at repo root."""
+
+from mujoco_gym_env.client import MuJoCoGymEnvClient
+
+__all__ = ["MuJoCoGymEnvClient"]

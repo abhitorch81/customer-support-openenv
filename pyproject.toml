@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "customer-support-openenv"
-version = "0.4.0"
-description = "OpenEnv monorepo: SupportOps customer-ticket environment plus optional MuJoCo Gymnasium server (same OpenEnv HTTP pattern)."
+name = "mujoco-gym-openenv"
+version = "1.0.0"
+description = "OpenEnv MuJoCo continuous-control suite (Gymnasium v5): pendulum, hopper, half-cheetah, FastAPI server, deterministic grader."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,25 +16,22 @@ dependencies = [
   "pyyaml>=6.0.2",
   "requests>=2.32.0",
   "uvicorn>=0.34.0",
-]
-
-[project.optional-dependencies]
-mujoco = [
   "gymnasium[mujoco]>=1.0.0",
   "numpy>=1.24.0",
 ]
+
+[project.optional-dependencies]
 dev = [
   "pytest>=8.0.0",
 ]
 
 [project.scripts]
-server = "server.app:main"
-customer-support-server = "customer_support_env.server.app:main"
-customer-support-baseline = "customer_support_env.baseline:main"
+server = "mujoco_gym_env.server.app:main"
 mujoco-gym-server = "mujoco_gym_env.server.app:main"
+mujoco-gym-baseline = "mujoco_gym_env.baseline:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["customer_support_env*", "mujoco_gym_env*", "server*"]
+include = ["mujoco_gym_env*"]

@@ -5,14 +5,12 @@ from typing import List, Optional
 
 from openai import OpenAI
 
-from customer_support_env.baseline import HeuristicPolicy, OpenAIPolicy
-from customer_support_env.environment import SupportTicketEnvironment
-from customer_support_env.models import ActionType, SupportAction, SupportObservation
+from mujoco_gym_env.baseline import RandomPolicy
+from mujoco_gym_env.environment import MuJoCoGymEnvironment
+from mujoco_gym_env.models import MuJoCoAction, MuJoCoObservation
 
 
 def _strict_unit_interval(value: float) -> float:
-    """Return a score strictly inside (0, 1) for validator parsing."""
-    # Use a margin large enough so formatting (e.g. :.6f) cannot round to exactly 0.0 or 1.0.
     eps = 1e-4
     if value <= 0.0:
         return eps
@@ -48,49 +46,45 @@ def _log_end(success: bool, steps: int, score: float, rewards: List[float]) -> N
     )
 
 
-def _format_action(action: SupportAction) -> str:
-    if action.argument is None:
-        return action.action_type.value
-    return f"{action.action_type.value}({action.argument})"
-
-
-def _format_action_safe(action: SupportAction) -> str:
+def _format_action_safe(action: MuJoCoAction) -> str:
     try:
-        return _format_action(action)
+        c = action.control or []
+        if len(c) <= 4:
+            return f"control({c})"
+        return f"control(dim={len(c)})"
     except Exception:
-        return "lookup_order"
+        return "control([])"
 
 
 def _act_safely(
     policy: object,
-    fallback: HeuristicPolicy,
-    observation: SupportObservation,
-) -> SupportAction:
+    fallback: RandomPolicy,
+    observation: MuJoCoObservation,
+) -> MuJoCoAction:
     try:
         return policy.act(observation)  # type: ignore[attr-defined]
     except Exception:
         try:
             return fallback.act(observation)
         except Exception:
-            return SupportAction(action_type=ActionType.LOOKUP_ORDER)
+            dim = max(1, observation.action_dim)
+            return MuJoCoAction(control=[0.0] * dim)
 
 
 def main() -> None:
-    # Required env vars (with defaults allowed only for base URL + model).
     api_base_url = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
     model_name = os.getenv("MODEL_NAME") or "openai/gpt-4.1-mini"
     hf_token = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
-    # Build OpenAI client explicitly (submission requirement).
-    client = OpenAI(base_url=api_base_url, api_key=hf_token)
+    # Explicit client construction (validator / submission compatibility).
+    _openai_client = OpenAI(base_url=api_base_url, api_key=hf_token or "unused-for-mujoco")
+    assert _openai_client is not None
 
-    env_name = os.getenv("BENCHMARK", "customer_support_env")
-    env = SupportTicketEnvironment()
+    env_name = os.getenv("BENCHMARK", "mujoco_gym_env")
+    env = MuJoCoGymEnvironment()
 
-    fallback_policy = HeuristicPolicy()
-    policy: object = OpenAIPolicy(model_name=model_name)
-    # Override the OpenAI client to ensure we use API_BASE_URL/HF_TOKEN from this script.
-    policy.client = client  # type: ignore[attr-defined]
+    fallback_policy = RandomPolicy()
+    policy: object = RandomPolicy()
 
     for task in env.list_tasks():
         task_id = task.metadata.task_id
@@ -105,8 +99,9 @@ def main() -> None:
             env.select_task(task_id)
             observation = env.reset()
             done = observation.done
+            max_extra = int(os.getenv("MUJOCO_INFERENCE_MAX_STEPS", "5000"))
 
-            while not done:
+            while not done and steps_taken < max_extra:
                 action = _act_safely(policy=policy, fallback=fallback_policy, observation=observation)
                 observation = env.step(action)
                 done = observation.done

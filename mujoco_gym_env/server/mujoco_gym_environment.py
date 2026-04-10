@@ -10,14 +10,14 @@ bootstrap_local_deps()
 from openenv.core.env_server import Environment
 from openenv.core.env_server.types import EnvironmentMetadata
 
-from customer_support_env.models import Difficulty, TaskMetadata
-
 from ..models import (
+    Difficulty,
     GraderResult,
     MuJoCoAction,
     MuJoCoObservation,
     MuJoCoState,
     TaskDescriptor,
+    TaskMetadata,
 )
 
 
@@ -35,26 +35,51 @@ def _ensure_gymnasium() -> Any:
         import gymnasium as gym
     except ImportError as exc:
         raise RuntimeError(
-            'MuJoCo Gym server requires optional dependencies. Install with: '
-            'pip install "customer-support-openenv[mujoco]"'
+            'Install dependencies: pip install "mujoco-gym-openenv"'
         ) from exc
     return gym
 
 
-# task_id -> gymnasium id, copy, difficulty rank string
+# Evaluation order + per-task grader scaling (return is domain-specific).
+_TASK_ORDER = [
+    "inverted_pendulum_v5",
+    "hopper_v5",
+    "halfcheetah_v5",
+]
+
 _TASK_REGISTRY: dict[str, dict[str, Any]] = {
     "inverted_pendulum_v5": {
         "gym_id": "InvertedPendulum-v5",
+        "difficulty": Difficulty.EASY,
+        "description": "Balance an inverted pendulum on a sliding cart (classic continuous control).",
+        "objective": "Keep the pole upright and maximize undiscounted return.",
+        "rank": "easy",
+        "return_offset": 15.0,
+        "return_scale": 120.0,
+    },
+    "hopper_v5": {
+        "gym_id": "Hopper-v5",
         "difficulty": Difficulty.MEDIUM,
-        "description": "Classic MuJoCo continuous control: balance a pendulum on a cart.",
-        "objective": "Apply torques to keep the pole upright and maximize return.",
+        "description": "One-legged hopper: stay upright and move forward without falling.",
+        "objective": "Apply torques so the hopper remains stable across the episode horizon.",
         "rank": "medium",
+        "return_offset": 40.0,
+        "return_scale": 900.0,
+    },
+    "halfcheetah_v5": {
+        "gym_id": "HalfCheetah-v5",
+        "difficulty": Difficulty.HARD,
+        "description": "High-dimensional cheetah runner: coordinated multi-joint locomotion.",
+        "objective": "Maximize forward velocity and return while staying within the physics simulator.",
+        "rank": "hard",
+        "return_offset": 0.0,
+        "return_scale": 2800.0,
     },
 }
 
 
 class MuJoCoGymEnvironment(Environment[MuJoCoAction, MuJoCoObservation, MuJoCoState]):
-    """Gymnasium MuJoCo task wrapped in the OpenEnv Environment API."""
+    """Gymnasium MuJoCo tasks behind the OpenEnv Environment API."""
 
     SUPPORTS_CONCURRENT_SESSIONS: bool = True
 
@@ -76,7 +101,8 @@ class MuJoCoGymEnvironment(Environment[MuJoCoAction, MuJoCoObservation, MuJoCoSt
 
     def list_tasks(self) -> list[TaskDescriptor]:
         out: list[TaskDescriptor] = []
-        for task_id, meta in _TASK_REGISTRY.items():
+        for task_id in _TASK_ORDER:
+            meta = _TASK_REGISTRY[task_id]
             out.append(
                 TaskDescriptor(
                     metadata=TaskMetadata(
@@ -183,11 +209,12 @@ class MuJoCoGymEnvironment(Environment[MuJoCoAction, MuJoCoObservation, MuJoCoSt
         return EnvironmentMetadata(
             name="mujoco_gym_env",
             description=(
-                "Gymnasium MuJoCo continuous control exposed as OpenEnv: "
-                "vector observations, boxed actions, dense rewards, deterministic grader."
+                "Production-style MuJoCo continuous control via Gymnasium v5: multi-task suite "
+                "(pendulum, hopper, half-cheetah), vector observations, boxed torques, dense rewards, "
+                "and a deterministic multi-signal grader for agent evaluation."
             ),
-            version="0.1.0",
-            author="customer-support-openenv monorepo",
+            version="1.0.0",
+            author="mujoco-gym-openenv",
         )
 
     def close(self) -> None:
@@ -198,12 +225,15 @@ class MuJoCoGymEnvironment(Environment[MuJoCoAction, MuJoCoObservation, MuJoCoSt
     def grade_current_episode(self) -> GraderResult:
         state = self._require_state()
         task_id = state.task_id
+        spec = _TASK_REGISTRY[task_id]
         ret = state.cumulative_reward
         steps = state.step_count
         horizon = max(1, state.max_episode_steps)
 
         length_score = min(1.0, steps / max(1.0, horizon * 0.4))
-        return_score = min(1.0, max(0.0, (ret + 15.0) / 120.0))
+        ro = float(spec["return_offset"])
+        rs = float(spec["return_scale"])
+        return_score = min(1.0, max(0.0, (ret + ro) / rs))
         combined = 0.35 * length_score + 0.65 * return_score
         if state.terminated and not state.truncated:
             combined *= 0.45

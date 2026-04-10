@@ -1,31 +1,28 @@
-# Environment design (OpenEnv alignment)
+# Environment design (OpenEnv + MuJoCo)
 
-This package follows the **three-component pattern** emphasized in [OpenEnv tutorials](https://github.com/meta-pytorch/OpenEnv/tree/main/tutorial) and the [OpenEnv course](https://github.com/raun/openenv-course/tree/main):
+This package follows the **three-component pattern** from [OpenEnv tutorials](https://github.com/meta-pytorch/OpenEnv/tree/main/tutorial) and the [OpenEnv course](https://github.com/raun/openenv-course/tree/main):
 
-| Layer | Role in this repo |
-|-------|-------------------|
-| **Models** | `customer_support_env/models.py` — typed `SupportAction`, `SupportObservation`, `SupportState`, grader DTOs |
-| **Environment** | `customer_support_env/server/customer_support_environment.py` — `Environment` implementation, reward shaping, deterministic grader |
-| **Server** | `customer_support_env/server/app.py` — FastAPI + `HTTPEnvServer` (`/ws`), HTTP `/reset` `/step` `/state`, `/health`, `/tasks`, `/grader` |
+| Layer | Role |
+|-------|------|
+| **Models** | `mujoco_gym_env/models.py` — `MuJoCoAction`, `MuJoCoObservation`, `MuJoCoState`, task + grader DTOs |
+| **Environment** | `mujoco_gym_env/server/mujoco_gym_environment.py` — `Environment` over Gymnasium MuJoCo v5 |
+| **Server** | `mujoco_gym_env/server/app.py` — FastAPI + `HTTPEnvServer` (`/ws`), `/reset`, `/step`, `/state`, `/health`, `/tasks`, `/grader` |
 
-**Client** (`customer_support_env/client.py`) mirrors reference Hub repos: thin `EnvClient` for remote training or evaluation.
-
-**Optional MuJoCo** (`mujoco_gym_env/`) reuses the same OpenEnv server layout for Gymnasium MuJoCo (`InvertedPendulum-v5`). Install with `pip install ".[mujoco]"`, run `mujoco-gym-server`, deploy with `Dockerfile.mujoco` / `openenv-mujoco.yaml` (keep the default `Dockerfile` for the support Space only).
+**Client** (`mujoco_gym_env/client.py`): thin `EnvClient` for remote rollouts.
 
 ## Use case
 
-**Customer support operations** — agents must gather information under partial observability, follow policy text, and avoid destructive shortcuts (premature resolution, bad close, unnecessary escalation). This is complementary to tool-heavy reference envs ([calendar](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/calendar_env), [reasoning_gym](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/reasoning_gym_env), [repl](https://github.com/meta-pytorch/OpenEnv/tree/main/envs/repl_env)): same OpenEnv contracts, different domain.
+**Continuous control under physics**: agents map vectors to torques, receive dense rewards from MuJoCo, and are scored with a **deterministic** rubric (length + return + failure/invalid penalties). Suited for RL, control, and robustness evaluation—orthogonal to tool-use or ticket workflows.
 
 ## Tasks
 
-Tasks live in `customer_support_env/tasks/catalog.json` and are listed in fixed evaluation order in `SupportTicketEnvironment.list_tasks()`. Adding a task requires:
+Tasks are registered in `mujoco_gym_env/server/mujoco_gym_environment.py` (`_TASK_REGISTRY`, `_TASK_ORDER`). Adding a task:
 
-1. JSON object with `ground_truth` aligned to grader expectations  
-2. Entry in the `ordered` list in `list_tasks()`  
-3. Optional heuristic updates in `customer_support_env/baseline.py` for smoke-test baselines  
+1. Append a registry entry (`gym_id`, copy, `difficulty`, `rank`, `return_offset`, `return_scale` for the grader).
+2. Add its id to `_TASK_ORDER`.
 
 ## Deployment
 
-- **Dockerfile** — production image; `PORT` defaults to `7860` for Hugging Face Spaces.  
-- **`GET /health`** — `{"status":"healthy"}` for probes and validation scripts.  
-- **`openenv.yaml`** — manifest for `openenv` tooling (`app`, `port`, `version`).
+- **Dockerfile** — `python:3.11-slim-bookworm`, `pip install -r requirements.txt`, `uvicorn mujoco_gym_env.server.app:app`, `PORT` default `7860` for Hugging Face Spaces.
+- **`GET /health`** — `{"status":"healthy"}`.
+- **`openenv.yaml`** — `app: mujoco_gym_env.server.app:app`, `port: 7860`.

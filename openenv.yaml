@@ -1,11 +1,10 @@
 spec_version: 1
-name: customer_support_env
-version: "0.4.0"
+name: mujoco_gym_env
+version: "1.0.0"
 description: >
-  OpenEnv SupportOps command-center environment: typed actions including internal KB lookup,
-  dense step rewards, deterministic multi-signal grader, five tasks (easy / two medium / two hard),
-  ops feed + risk/SLA hints, FastAPI + WebSocket server, /health for deployment probes.
+  OpenEnv MuJoCo continuous control via Gymnasium v5: InvertedPendulum, Hopper, HalfCheetah,
+  vector observations, boxed actions, deterministic grader, FastAPI + WebSocket, /health.
 type: space
 runtime: fastapi
-app: server.app:app
+app: mujoco_gym_env.server.app:app
 port: 7860

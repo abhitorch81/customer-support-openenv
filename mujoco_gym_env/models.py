@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Literal
 
 from ._bootstrap import bootstrap_local_deps
@@ -9,7 +10,20 @@ bootstrap_local_deps()
 from openenv.core.env_server import Action, Observation, State
 from pydantic import BaseModel, ConfigDict, Field
 
-from customer_support_env.models import Difficulty, TaskMetadata
+
+class Difficulty(str, Enum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
+class TaskMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: str
+    difficulty: Difficulty
+    description: str
+    objective: str
 
 
 class MuJoCoAction(Action):

@@ -17,8 +17,8 @@ from .mujoco_gym_environment import MuJoCoGymEnvironment
 
 app = FastAPI(
     title="MuJoCo Gym OpenEnv",
-    description="Gymnasium MuJoCo environment behind the OpenEnv HTTP/WebSocket server.",
-    version="0.1.0",
+    description="Gymnasium MuJoCo multi-task suite (OpenEnv HTTP/WebSocket server).",
+    version="1.0.0",
 )
 
 openenv_server = HTTPEnvServer(
