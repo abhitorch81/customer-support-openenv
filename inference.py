@@ -7,7 +7,7 @@ from openai import OpenAI
 
 from customer_support_env.baseline import HeuristicPolicy, OpenAIPolicy
 from customer_support_env.environment import SupportTicketEnvironment
-from customer_support_env.models import SupportAction, SupportObservation
+from customer_support_env.models import ActionType, SupportAction, SupportObservation
 
 
 def _strict_unit_interval(value: float) -> float:
@@ -54,6 +54,13 @@ def _format_action(action: SupportAction) -> str:
     return f"{action.action_type.value}({action.argument})"
 
 
+def _format_action_safe(action: SupportAction) -> str:
+    try:
+        return _format_action(action)
+    except Exception:
+        return "lookup_order"
+
+
 def _act_safely(
     policy: object,
     fallback: HeuristicPolicy,
@@ -62,7 +69,10 @@ def _act_safely(
     try:
         return policy.act(observation)  # type: ignore[attr-defined]
     except Exception:
-        return fallback.act(observation)
+        try:
+            return fallback.act(observation)
+        except Exception:
+            return SupportAction(action_type=ActionType.LOOKUP_ORDER)
 
 
 def main() -> None:
@@ -107,7 +117,7 @@ def main() -> None:
 
                 _log_step(
                     step=steps_taken,
-                    action=_format_action(action),
+                    action=_format_action_safe(action),
                     reward=reward_val,
                     done=bool(done),
                     error=None,

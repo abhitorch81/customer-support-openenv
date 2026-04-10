@@ -18,6 +18,25 @@ DEFAULT_API_BASE_URL = "https://router.huggingface.co/v1"
 DEFAULT_MODEL_NAME = "openai/gpt-4.1-mini"
 
 
+def _safe_float(value: object, default: float = 0.0) -> float:
+    """Coerce order/policy numeric fields; dict .get(k, d) still returns None if k maps to null."""
+    if value is None:
+        return default
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 class Policy(Protocol):
     name: str
 
@@ -29,6 +48,13 @@ class HeuristicPolicy:
     name = "heuristic"
 
     def act(self, observation: SupportObservation) -> SupportAction:
+        try:
+            return self._act_inner(observation)
+        except Exception:
+            # Validator must never see an uncaught exception from the heuristic path.
+            return SupportAction(action_type=ActionType.LOOKUP_ORDER)
+
+    def _act_inner(self, observation: SupportObservation) -> SupportAction:
         if not _history_has(observation, "lookup_order"):
             return SupportAction(action_type="lookup_order")
         if not _history_has(observation, "lookup_policy"):
@@ -38,8 +64,8 @@ class HeuristicPolicy:
             vo = observation.visible_order
             if (
                 str(vo.get("fraud_risk", "")).lower() == "high"
-                and float(vo.get("order_total_usd", 0)) >= 500
-                and int(vo.get("days_since_delivery", 99)) <= 1
+                and _safe_float(vo.get("order_total_usd"), 0.0) >= 500
+                and _safe_int(vo.get("days_since_delivery"), 99) <= 1
                 and not _history_has(observation, "lookup_kb")
             ):
                 return SupportAction(action_type=ActionType.LOOKUP_KB, argument="fraud_playbook_r7")
@@ -80,9 +106,8 @@ class OpenAIPolicy:
         self._fallback_policy = HeuristicPolicy()
 
     def act(self, observation: SupportObservation) -> SupportAction:
-        prompt = self._build_prompt(observation)
-
         try:
+            prompt = self._build_prompt(observation)
             response = self.client.responses.create(
                 model=self.model_name,
                 input=prompt,
@@ -92,9 +117,12 @@ class OpenAIPolicy:
             data = json.loads(payload)
             return SupportAction.model_validate(data)
         except Exception:
-            # Any error (network/auth, unexpected response shape, invalid JSON, pydantic validation)
-            # should not crash the pipeline.
-            return self._fallback_policy.act(observation)
+            # Any error (network/auth, prompt build, response shape, JSON, validation)
+            # must not crash the pipeline — including if the heuristic fallback fails.
+            try:
+                return self._fallback_policy.act(observation)
+            except Exception:
+                return SupportAction(action_type=ActionType.LOOKUP_ORDER)
 
     @staticmethod
     def _extract_response_text(response: object) -> str:
@@ -133,13 +161,17 @@ class OpenAIPolicy:
             "argument": "optional string",
             "notes": "optional string",
         }
+        try:
+            obs_json = observation.model_dump_json(indent=2)
+        except Exception:
+            obs_json = '{"observation": "unavailable"}'
         return (
             "You are operating a customer support environment.\n"
             "Return exactly one JSON object and nothing else.\n"
             "Choose the next best action to maximize final grader score.\n"
             "Do not invent hidden facts.\n"
             "Use lookup_kb with argument article_id when policy or the ticket queue requires an internal knowledge article.\n\n"
-            f"Observation:\n{observation.model_dump_json(indent=2)}\n\n"
+            f"Observation:\n{obs_json}\n\n"
             f"Action schema:\n{json.dumps(schema, indent=2)}\n"
         )
 
@@ -248,7 +280,7 @@ def _infer_issue_type(observation: SupportObservation) -> str:
 
 
 def _infer_priority(observation: SupportObservation) -> str:
-    order_total = float(observation.visible_order.get("order_total_usd", 0.0))
+    order_total = _safe_float(observation.visible_order.get("order_total_usd"), 0.0)
     fraud_risk = str(observation.visible_order.get("fraud_risk", "low")).lower()
     message = observation.customer_message.lower()
 
@@ -263,20 +295,20 @@ def _infer_resolution(observation: SupportObservation, issue_type: str) -> str:
     policy = (observation.visible_policy or "").lower()
     order = observation.visible_order
     customer_details = {
-        key: value.lower() for key, value in observation.revealed_customer_details.items()
+        key: str(value).lower() for key, value in observation.revealed_customer_details.items()
     }
 
     if (
         "manual review" in policy
-        and float(order.get("order_total_usd", 0.0)) > 1000
-        and int(order.get("days_since_delivery", 0)) > 30
+        and _safe_float(order.get("order_total_usd"), 0.0) > 1000
+        and _safe_int(order.get("days_since_delivery"), 0) > 30
     ):
         return "manual_review"
 
     if (
         str(order.get("fraud_risk", "")).lower() == "high"
-        and float(order.get("order_total_usd", 0.0)) >= 500
-        and int(order.get("days_since_delivery", 99)) <= 1
+        and _safe_float(order.get("order_total_usd"), 0.0) >= 500
+        and _safe_int(order.get("days_since_delivery"), 99) <= 1
     ):
         return "manual_review"
 
