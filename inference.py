@@ -9,12 +9,6 @@ from customer_support_env.baseline import HeuristicPolicy, OpenAIPolicy
 from customer_support_env.environment import SupportTicketEnvironment
 from customer_support_env.models import SupportAction, SupportObservation
 
-import os
-import sys
-import json
-
-from customer_support_env.baseline import run_baseline
-
 
 def _strict_unit_interval(value: float) -> float:
     """Return a score strictly inside (0, 1) for validator parsing."""
@@ -58,6 +52,7 @@ def _format_action(action: SupportAction) -> str:
     if action.argument is None:
         return action.action_type.value
     return f"{action.action_type.value}({action.argument})"
+
 
 def _act_safely(
     policy: object,

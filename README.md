@@ -106,13 +106,13 @@ This gives agents signal throughout the episode while still preserving a final d
 
 ## OpenEnv framework mapping
 
-This repo now follows the official OpenEnv creator pattern:
+This repo follows the official OpenEnv creator pattern (see also [OpenEnv tutorials](https://github.com/meta-pytorch/OpenEnv/tree/main/tutorial)):
 
-- [models.py](/C:/Users/kritt/OneDrive/Documents/Playground/customer_support_openenv/customer_support_env/models.py): typed `Action`, `Observation`, and `State` models built on OpenEnv base types
-- [client.py](/C:/Users/kritt/OneDrive/Documents/Playground/customer_support_openenv/customer_support_env/client.py): official `EnvClient` implementation
-- [customer_support_environment.py](/C:/Users/kritt/OneDrive/Documents/Playground/customer_support_openenv/customer_support_env/server/customer_support_environment.py): `Environment` implementation
-- [app.py](/C:/Users/kritt/OneDrive/Documents/Playground/customer_support_openenv/customer_support_env/server/app.py): FastAPI app with OpenEnv WebSocket server plus the hackathon HTTP endpoints
-- [openenv.yaml](/C:/Users/kritt/OneDrive/Documents/Playground/customer_support_openenv/openenv.yaml): official OpenEnv manifest
+- [customer_support_env/models.py](customer_support_env/models.py): typed `Action`, `Observation`, and `State` models built on OpenEnv base types
+- [customer_support_env/client.py](customer_support_env/client.py): official `EnvClient` implementation
+- [customer_support_env/server/customer_support_environment.py](customer_support_env/server/customer_support_environment.py): `Environment` implementation
+- [customer_support_env/server/app.py](customer_support_env/server/app.py): FastAPI app with OpenEnv WebSocket server plus hackathon HTTP endpoints
+- [openenv.yaml](openenv.yaml): OpenEnv manifest (port aligned with Docker Space: `7860`)
 
 ## Project structure
 
@@ -145,7 +145,7 @@ customer_support_openenv/
 PowerShell:
 
 ```powershell
-cd C:\Users\kritt\OneDrive\Documents\Playground\customer_support_openenv
+cd D:\path\to\customer-support-openenv
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install --upgrade pip
 ```
