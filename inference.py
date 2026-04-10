@@ -76,11 +76,15 @@ def _llm_proxy_ping(client: OpenAI, model: str) -> None:
     One real HTTP request through the hackathon LiteLLM proxy (Phase 2 observability).
     Physics steps still use RandomPolicy; the model call satisfies the proxy key check.
     """
-    client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": "."}],
-        max_tokens=1,
-    )
+    try:
+        client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": "."}],
+            max_tokens=1,
+        )
+    except Exception:
+        # Some proxies expose the Responses API only.
+        client.responses.create(model=model, input=".")
 
 
 def main() -> None:
