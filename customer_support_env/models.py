@@ -20,6 +20,7 @@ class Difficulty(str, Enum):
 class ActionType(str, Enum):
     LOOKUP_ORDER = "lookup_order"
     LOOKUP_POLICY = "lookup_policy"
+    LOOKUP_KB = "lookup_kb"
     ASK_CUSTOMER = "ask_customer"
     SET_ISSUE_TYPE = "set_issue_type"
     SET_PRIORITY = "set_priority"
@@ -53,6 +54,10 @@ class SupportObservation(Observation):
     available_actions: list[ActionType]
     visible_order: dict[str, Any]
     visible_policy: str | None = None
+    knowledge_snippets: dict[str, str] = Field(default_factory=dict)
+    command_center_feed: list[str] = Field(default_factory=list)
+    risk_heat: int = Field(default=0, ge=0, le=100)
+    sla_minutes_remaining: int = Field(default=0, ge=0)
     revealed_customer_details: dict[str, str] = Field(default_factory=dict)
     known_missing_fields: list[str] = Field(default_factory=list)
     history: list[ActionRecord] = Field(default_factory=list)
@@ -85,6 +90,7 @@ class SupportState(State):
     unnecessary_escalation_attempted: bool = False
     history: list[ActionRecord] = Field(default_factory=list)
     current_score: float = Field(ge=0.0, le=1.0)
+    knowledge_articles_opened: list[str] = Field(default_factory=list)
 
 
 class GraderResult(BaseModel):

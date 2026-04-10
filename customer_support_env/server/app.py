@@ -19,7 +19,7 @@ from .customer_support_environment import SupportTicketEnvironment
 app = FastAPI(
     title="Customer Support OpenEnv",
     description="Official OpenEnv customer support ticket resolution environment.",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 openenv_server = HTTPEnvServer(

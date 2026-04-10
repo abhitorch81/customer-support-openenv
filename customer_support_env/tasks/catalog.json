@@ -144,5 +144,42 @@
       ],
       "escalation_required": false
     }
+  },
+  {
+    "task_id": "hard_fraud_playbook_escalation",
+    "difficulty": "hard",
+    "description": "High-value same-day wrong-item refund rush with elevated fraud risk: the agent must retrieve the internal fraud playbook before deciding resolution and escalating.",
+    "objective": "Look up order, policy, and knowledge article fraud_playbook_r7; set issue and priority; choose manual_review; escalate to FraudOps; close successfully.",
+    "ticket_id": "TCK-3099",
+    "customer_message": "I ordered a graphite phone case but you shipped the wrong color. It was delivered today — I want a full refund right now to the same card, no return label.",
+    "initial_order_view": {
+      "order_id": "ORD-8811",
+      "item_name": "ProShield Phone Case",
+      "order_total_usd": 649.0
+    },
+    "order": {
+      "order_id": "ORD-8811",
+      "item_name": "ProShield Phone Case",
+      "ordered_variant": "graphite",
+      "received_variant_mismatch": true,
+      "order_total_usd": 649.0,
+      "days_since_delivery": 0,
+      "carrier_status": "delivered",
+      "fraud_risk": "high",
+      "customer_tier": "standard"
+    },
+    "policy": "Standard wrong-item refunds are allowed within 14 days when verification is complete. For orders marked high fraud risk with same-day delivery and refund demands over $500, agents must not auto-refund or authorize chargebacks in chat. Agents must open internal article fraud_playbook_r7 before decide_resolution, then route to manual_review with escalation to Fraud Operations.",
+    "knowledge_base": {
+      "fraud_playbook_r7": "R7 — Same-day high-value wrong-item refund rush: (1) Confirm order + policy flags. (2) Do not promise instant refund. (3) Set resolution to manual_review. (4) Escalate to FraudOps queue. (5) Close only after escalation is recorded."
+    },
+    "customer_data": {},
+    "ground_truth": {
+      "issue_type": "wrong_item",
+      "priority": "high",
+      "resolution": "manual_review",
+      "required_info": [],
+      "required_kb_articles": ["fraud_playbook_r7"],
+      "escalation_required": true
+    }
   }
 ]

@@ -35,7 +35,7 @@ This environment models a genuine operational workflow rather than a toy task. I
 
 ## Tasks
 
-The environment ships with **4 deterministic tasks** (ordered easy → medium → hard):
+The environment ships with **5 deterministic tasks** (ordered easy → medium → hard):
 
 1. `easy_damaged_mug`  
    **Difficulty:** easy  
@@ -52,6 +52,10 @@ The environment ships with **4 deterministic tasks** (ordered easy → medium �
 4. `hard_laptop_policy_exception`  
    **Difficulty:** hard  
    **Objective:** Handle a damaged high-value order outside the normal policy window that requires evidence collection, exception escalation, and disciplined manual-review handling.
+
+5. `hard_fraud_playbook_escalation`  
+   **Difficulty:** hard  
+   **Objective:** Same-day, high-value wrong-item refund rush with **high fraud risk**: open order and policy, **`lookup_kb` the fraud playbook** (`fraud_playbook_r7`), set **manual_review**, **escalate**, then close.
 
 ### Learning resources (OpenEnv patterns)
 
@@ -73,7 +77,7 @@ Actions are typed JSON objects with the following schema:
 
 ```json
 {
-  "action_type": "lookup_order | lookup_policy | ask_customer | set_issue_type | set_priority | decide_resolution | escalate_ticket | close_ticket",
+  "action_type": "lookup_order | lookup_policy | lookup_kb | ask_customer | set_issue_type | set_priority | decide_resolution | escalate_ticket | close_ticket",
   "argument": "optional string payload",
   "notes": "optional free-form reasoning note"
 }
@@ -84,6 +88,7 @@ Common examples:
 ```json
 {"action_type": "lookup_order"}
 {"action_type": "lookup_policy"}
+{"action_type": "lookup_kb", "argument": "fraud_playbook_r7"}
 {"action_type": "ask_customer", "argument": "photo_of_received_item"}
 {"action_type": "set_issue_type", "argument": "wrong_item"}
 {"action_type": "set_priority", "argument": "urgent"}
@@ -100,6 +105,8 @@ Each observation is a typed JSON object that includes:
 - customer message
 - the current visible order snapshot
 - visible policy text if opened
+- `knowledge_snippets` from articles opened via `lookup_kb`
+- command-center style hints: `command_center_feed`, `risk_heat`, `sla_minutes_remaining`
 - revealed customer details from prior questions
 - action history
 - last action result
@@ -322,7 +329,7 @@ Suggested startup:
 
 You should treat the heuristic baseline as a smoke test and the OpenAI baseline as the reproducible submission baseline.
 
-There are **four** graded tasks; per-task and average scores depend on policy and grader clamping. Print the current numbers locally:
+There are **five** graded tasks; per-task and average scores depend on policy and grader clamping. Print the current numbers locally:
 
 ```powershell
 .venv\Scripts\python.exe scripts\run_baseline.py --policy heuristic

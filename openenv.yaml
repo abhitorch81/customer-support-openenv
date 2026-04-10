@@ -1,10 +1,10 @@
 spec_version: 1
 name: customer_support_env
-version: "0.3.0"
+version: "0.4.0"
 description: >
-  OpenEnv customer support operations environment: typed actions, dense step rewards,
-  deterministic multi-signal grader, four tasks (easy / medium / medium+ / hard),
-  FastAPI + WebSocket server, /health for deployment probes.
+  OpenEnv SupportOps command-center environment: typed actions including internal KB lookup,
+  dense step rewards, deterministic multi-signal grader, five tasks (easy / two medium / two hard),
+  ops feed + risk/SLA hints, FastAPI + WebSocket server, /health for deployment probes.
 type: space
 runtime: fastapi
 app: server.app:app

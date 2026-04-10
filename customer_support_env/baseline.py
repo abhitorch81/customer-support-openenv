@@ -6,7 +6,13 @@ import os
 from typing import Protocol
 
 from .environment import SupportTicketEnvironment
-from .models import BaselineEpisodeResult, BaselineRunResult, SupportAction, SupportObservation
+from .models import (
+    ActionType,
+    BaselineEpisodeResult,
+    BaselineRunResult,
+    SupportAction,
+    SupportObservation,
+)
 
 DEFAULT_API_BASE_URL = "https://router.huggingface.co/v1"
 DEFAULT_MODEL_NAME = "openai/gpt-4.1-mini"
@@ -27,6 +33,16 @@ class HeuristicPolicy:
             return SupportAction(action_type="lookup_order")
         if not _history_has(observation, "lookup_policy"):
             return SupportAction(action_type="lookup_policy")
+        # Same-day high-fraud playbook (hard_fraud_playbook_escalation) — tool-style KB retrieval
+        if observation.order_retrieved and observation.policy_retrieved:
+            vo = observation.visible_order
+            if (
+                str(vo.get("fraud_risk", "")).lower() == "high"
+                and float(vo.get("order_total_usd", 0)) >= 500
+                and int(vo.get("days_since_delivery", 99)) <= 1
+                and not _history_has(observation, "lookup_kb")
+            ):
+                return SupportAction(action_type=ActionType.LOOKUP_KB, argument="fraud_playbook_r7")
         if observation.known_missing_fields:
             field_name = observation.known_missing_fields[0]
             if field_name not in observation.revealed_customer_details:
@@ -106,6 +122,7 @@ class OpenAIPolicy:
             "action_type": [
                 "lookup_order",
                 "lookup_policy",
+                "lookup_kb",
                 "ask_customer",
                 "set_issue_type",
                 "set_priority",
@@ -120,7 +137,8 @@ class OpenAIPolicy:
             "You are operating a customer support environment.\n"
             "Return exactly one JSON object and nothing else.\n"
             "Choose the next best action to maximize final grader score.\n"
-            "Do not invent hidden facts.\n\n"
+            "Do not invent hidden facts.\n"
+            "Use lookup_kb with argument article_id when policy or the ticket queue requires an internal knowledge article.\n\n"
             f"Observation:\n{observation.model_dump_json(indent=2)}\n\n"
             f"Action schema:\n{json.dumps(schema, indent=2)}\n"
         )
@@ -252,6 +270,13 @@ def _infer_resolution(observation: SupportObservation, issue_type: str) -> str:
         "manual review" in policy
         and float(order.get("order_total_usd", 0.0)) > 1000
         and int(order.get("days_since_delivery", 0)) > 30
+    ):
+        return "manual_review"
+
+    if (
+        str(order.get("fraud_risk", "")).lower() == "high"
+        and float(order.get("order_total_usd", 0.0)) >= 500
+        and int(order.get("days_since_delivery", 99)) <= 1
     ):
         return "manual_review"
 

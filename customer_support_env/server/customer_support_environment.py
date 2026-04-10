@@ -63,6 +63,7 @@ class SupportTicketEnvironment(
             "medium_wrong_hoodie",
             "medium_late_delivery_credit",
             "hard_laptop_policy_exception",
+            "hard_fraud_playbook_escalation",
         ]
         descriptors: list[TaskDescriptor] = []
         for task_id in ordered:
@@ -117,6 +118,7 @@ class SupportTicketEnvironment(
             unnecessary_escalation_attempted=False,
             history=[],
             current_score=0.0,
+            knowledge_articles_opened=[],
         )
         return self._build_observation(last_action_result=self._reset_message, reward=0.0)
 
@@ -144,6 +146,8 @@ class SupportTicketEnvironment(
                 outcome = self._handle_lookup_order(task, state, reward_components)
             case ActionType.LOOKUP_POLICY:
                 outcome = self._handle_lookup_policy(state, reward_components)
+            case ActionType.LOOKUP_KB:
+                outcome = self._handle_lookup_kb(task, state, action, reward_components)
             case ActionType.ASK_CUSTOMER:
                 outcome = self._handle_ask_customer(task, state, action, reward_components)
             case ActionType.SET_ISSUE_TYPE:
@@ -194,8 +198,12 @@ class SupportTicketEnvironment(
     def get_metadata(self) -> EnvironmentMetadata:
         return EnvironmentMetadata(
             name="customer_support_env",
-            description="Customer support ticket resolution environment with deterministic graders.",
-            version="0.3.0",
+            description=(
+                "SupportOps Command Center — ticket resolution with policy, order data, "
+                "internal KB lookup (tool-style), live-style ops feed, SLA + risk telemetry, "
+                "and deterministic multi-signal grading."
+            ),
+            version="0.4.0",
             author="Codex + user",
         )
 
@@ -211,9 +219,17 @@ class SupportTicketEnvironment(
         asked_count = sum(1 for item in required if item in state.required_info_asked)
         required_info_score = 1.0 if not required else asked_count / len(required)
 
+        required_kb = truth.get("required_kb_articles") or []
+        if not required_kb:
+            kb_score = 1.0
+        else:
+            opened = set(state.knowledge_articles_opened)
+            kb_score = sum(1 for k in required_kb if k in opened) / len(required_kb)
+
         breakdown = {
             "order_lookup": 1.0 if state.order_retrieved else 0.0,
             "policy_lookup": 1.0 if state.policy_retrieved else 0.0,
+            "kb_coverage": round(kb_score, 4),
             "required_info": round(required_info_score, 4),
             "issue_type": 1.0 if state.issue_type_guess == truth["issue_type"] else 0.0,
             "priority": 1.0 if state.priority_guess == truth["priority"] else 0.0,
@@ -229,14 +245,15 @@ class SupportTicketEnvironment(
 
         score = (
             0.08 * breakdown["order_lookup"]
-            + 0.10 * breakdown["policy_lookup"]
-            + 0.18 * breakdown["required_info"]
+            + 0.09 * breakdown["policy_lookup"]
+            + 0.07 * breakdown["kb_coverage"]
+            + 0.14 * breakdown["required_info"]
             + 0.12 * breakdown["issue_type"]
             + 0.10 * breakdown["priority"]
             + 0.22 * breakdown["resolution"]
             + 0.08 * breakdown["escalation"]
             + 0.04 * breakdown["closed"]
-            + 0.08 * breakdown["workflow_discipline"]
+            + 0.06 * breakdown["workflow_discipline"]
         )
 
         step_budget = self._score_step_budget(state.difficulty)
@@ -262,6 +279,13 @@ class SupportTicketEnvironment(
         if state.order_retrieved:
             visible_order = copy.deepcopy(task["order"])
 
+        kb_source = task.get("knowledge_base") or {}
+        knowledge_snippets = {
+            k: kb_source[k]
+            for k in state.knowledge_articles_opened
+            if k in kb_source
+        }
+
         return SupportObservation(
             task_id=task["task_id"],
             difficulty=Difficulty(task["difficulty"]),
@@ -271,6 +295,10 @@ class SupportTicketEnvironment(
             available_actions=list(ActionType),
             visible_order=visible_order,
             visible_policy=task["policy"] if state.policy_retrieved else None,
+            knowledge_snippets=knowledge_snippets,
+            command_center_feed=self._build_command_center_feed(task, state, last_action_result),
+            risk_heat=self._compute_risk_heat(task, state),
+            sla_minutes_remaining=self._compute_sla_minutes_remaining(state),
             revealed_customer_details=copy.deepcopy(state.revealed_customer_details),
             known_missing_fields=self._remaining_required_fields(task, state),
             history=copy.deepcopy(state.history),
@@ -305,6 +333,38 @@ class SupportTicketEnvironment(
         state.policy_retrieved = True
         reward_components["policy_lookup"] = 0.10
         return "Opened the relevant return and escalation policy."
+
+    def _handle_lookup_kb(
+        self,
+        task: dict[str, Any],
+        state: SupportState,
+        action: SupportAction,
+        reward_components: dict[str, float],
+    ) -> str:
+        kb = task.get("knowledge_base") or {}
+        if not kb:
+            reward_components["kb_unavailable"] = -0.04
+            return "No internal knowledge base is configured for this ticket queue."
+
+        if not action.argument:
+            reward_components["invalid_kb"] = -0.06
+            state.invalid_action_count += 1
+            return "lookup_kb requires an argument naming the article id (e.g. fraud_playbook_r7)."
+
+        if action.argument not in kb:
+            reward_components["unknown_kb"] = -0.05
+            return f"No knowledge article id '{action.argument}' exists in this queue."
+
+        if action.argument in state.knowledge_articles_opened:
+            reward_components["repeat_kb"] = -0.03
+            return f"Article '{action.argument}' was already retrieved."
+
+        state.knowledge_articles_opened.append(action.argument)
+        reward_components["kb_lookup"] = 0.09
+        return (
+            f"Retrieved internal article '{action.argument}'. "
+            "Content is now visible under observation.knowledge_snippets."
+        )
 
     def _handle_ask_customer(
         self,
@@ -391,6 +451,11 @@ class SupportTicketEnvironment(
             reward_components["premature_resolution"] = -0.20
             return "Resolution chosen before all required customer verification was collected."
 
+        if not self._kb_requirements_satisfied(task, state):
+            state.premature_resolution_attempted = True
+            reward_components["premature_resolution_kb"] = -0.20
+            return "Resolution chosen before all required internal knowledge articles were retrieved."
+
         if action.argument == task["ground_truth"]["resolution"]:
             reward_components["correct_resolution"] = 0.35
             return f"Resolution set correctly to '{action.argument}'."
@@ -451,12 +516,67 @@ class SupportTicketEnvironment(
         return all(
             [
                 self._required_info_satisfied(task, state),
+                self._kb_requirements_satisfied(task, state),
                 state.issue_type_guess == truth["issue_type"],
                 state.priority_guess == truth["priority"],
                 state.resolution_guess == truth["resolution"],
                 state.escalated == truth["escalation_required"],
             ]
         )
+
+    @staticmethod
+    def _kb_requirements_satisfied(task: dict[str, Any], state: SupportState) -> bool:
+        required = (task.get("ground_truth") or {}).get("required_kb_articles") or []
+        if not required:
+            return True
+        opened = set(state.knowledge_articles_opened)
+        return all(key in opened for key in required)
+
+    def _build_command_center_feed(
+        self,
+        task: dict[str, Any],
+        state: SupportState,
+        last_action_result: str,
+    ) -> list[str]:
+        tid = task.get("ticket_id", "TICKET")
+        lines = [
+            f"[ops] {tid} | step {state.step_count}/{state.max_steps} | SupportOps Command Center",
+        ]
+        if state.order_retrieved and task.get("order"):
+            od = task["order"]
+            lines.append(
+                f"[risk] fraud_risk={od.get('fraud_risk', 'n/a')} | "
+                f"total_usd={od.get('order_total_usd', 'n/a')} | "
+                f"days_since_delivery={od.get('days_since_delivery', 'n/a')}"
+            )
+        if state.knowledge_articles_opened:
+            lines.append(f"[kb] open_articles={state.knowledge_articles_opened}")
+        if state.escalated:
+            lines.append("[queue] FraudOps / Tier-2 bridge engaged")
+        tail = last_action_result.replace("\n", " ")
+        if len(tail) > 140:
+            tail = tail[:137] + "..."
+        lines.append(f"[last] {tail}")
+        return lines[:8]
+
+    @staticmethod
+    def _compute_risk_heat(task: dict[str, Any], state: SupportState) -> int:
+        heat = 22
+        if state.order_retrieved and task.get("order"):
+            fr = str(task["order"].get("fraud_risk", "low")).lower()
+            if fr == "high":
+                heat += 48
+            elif fr == "medium":
+                heat += 26
+            else:
+                heat += 6
+        heat += state.invalid_action_count * 8
+        heat += min(24, state.step_count * 2)
+        return min(100, heat)
+
+    @staticmethod
+    def _compute_sla_minutes_remaining(state: SupportState) -> int:
+        return max(0, int((state.max_steps - state.step_count) * 4))
 
     def _workflow_discipline_score(self, state: SupportState) -> float:
         issues = sum(
