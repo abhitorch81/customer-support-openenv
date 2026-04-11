@@ -5,7 +5,7 @@ colorFrom: purple
 colorTo: blue
 sdk: docker
 app_port: 7860
-short_description: "Lead optimization OpenEnv: RDKit, SMILES, structured actions, 5 tasks"
+short_description: "OpenEnv: RDKit lead optimization, 5 tasks"
 ---
 
 # Drug Discovery OpenEnv — Lead Optimization Agent
