@@ -115,6 +115,7 @@ class DrugDiscoveryEnvironment(Environment[DrugDiscoveryAction, DrugDiscoveryObs
         desc = compute_descriptor_bundle(mol, task["reference_smiles"])
         self._prev_descriptors = None
 
+        seed_score = _strict_unit_interval(0.0)
         self._state = DrugDiscoveryState(
             episode_id=episode_id or str(uuid4()),
             step_count=0,
@@ -128,12 +129,12 @@ class DrugDiscoveryEnvironment(Environment[DrugDiscoveryAction, DrugDiscoveryObs
             modification_history=[],
             candidate_pool=[smi],
             best_smiles=smi,
-            best_score=0.0,
+            best_score=seed_score,
             last_descriptors=desc,
             scored_this_episode=False,
             submitted=False,
             invalid_action_count=0,
-            current_score=0.0,
+            current_score=seed_score,
         )
         grader = self.grade_current_episode()
         self._state.current_score = grader.score

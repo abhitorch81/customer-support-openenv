@@ -4,5 +4,6 @@
 .openenv_ref/
 __pycache__/
 *.pyc
+*.egg-info/
 server.out.log
 server.err.log

@@ -8,7 +8,7 @@ from ._bootstrap import bootstrap_local_deps
 bootstrap_local_deps()
 
 from openenv.core.env_server import Action, Observation, State
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Difficulty(str, Enum):
@@ -95,19 +95,28 @@ class DrugDiscoveryState(State):
     modification_history: list[str]
     candidate_pool: list[str]
     best_smiles: str
-    best_score: float
+    best_score: float = Field(gt=0.0, lt=1.0)
     last_descriptors: dict[str, float]
     scored_this_episode: bool
     submitted: bool
     invalid_action_count: int
-    current_score: float = Field(ge=0.0, le=1.0)
+    current_score: float = Field(gt=0.0, lt=1.0)
 
 
 class GraderResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task_id: str
-    score: float = Field(ge=0.0, le=1.0)
+    score: float = Field(gt=0.0, lt=1.0)
     breakdown: dict[str, float]
     passed: bool
     rationale: str = ""
+
+    @field_validator("breakdown")
+    @classmethod
+    def _breakdown_open_unit_interval(cls, d: dict[str, float]) -> dict[str, float]:
+        for key, v in d.items():
+            x = float(v)
+            if not (0.0 < x < 1.0):
+                raise ValueError(f"breakdown[{key!r}] must be strictly in (0, 1), got {x!r}")
+        return d
