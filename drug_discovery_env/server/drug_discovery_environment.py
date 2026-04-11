@@ -35,12 +35,18 @@ from ..models import (
 
 
 def _strict_unit_interval(value: float) -> float:
+    """Map to strict open interval (0, 1) for Phase 2 validators (reject 0.0 and 1.0)."""
     eps = 1e-4
-    if value <= 0.0:
+    v = float(value)
+    if v != v:  # NaN
         return eps
-    if value >= 1.0:
+    v = min(1.0 - eps, max(eps, v))
+    rounded = round(v, 6)
+    if rounded <= 0.0 or v <= 0.0:
+        return eps
+    if rounded >= 1.0 or v >= 1.0:
         return 1.0 - eps
-    return value
+    return float(rounded)
 
 
 _TASK_ORDER = [
@@ -255,8 +261,8 @@ class DrugDiscoveryEnvironment(Environment[DrugDiscoveryAction, DrugDiscoveryObs
             "workflow": 1.0 if workflow_ok else 0.0,
         }
         raw = sum(checks.values()) / max(1, len(checks))
-        score = round(_strict_unit_interval(raw), 6)
-        breakdown = {k: round(_strict_unit_interval(v), 6) for k, v in checks.items()}
+        score = _strict_unit_interval(raw)
+        breakdown = {k: _strict_unit_interval(v) for k, v in checks.items()}
         passed = score >= 0.72 and qed_ok and aff_ok and tox_ok and mw_ok and logp_ok and workflow_ok
         if gt.get("scaffold_change_required"):
             passed = passed and scaffold_ok

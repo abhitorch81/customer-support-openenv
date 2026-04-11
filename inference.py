@@ -24,12 +24,18 @@ _LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME")
 
 
 def _strict_unit_interval(value: float) -> float:
+    """Strict open (0, 1); safe after rounding for [END] score= parsing."""
     eps = 1e-4
-    if value <= 0.0:
+    v = float(value)
+    if v != v:
         return eps
-    if value >= 1.0:
+    v = min(1.0 - eps, max(eps, v))
+    rounded = round(v, 6)
+    if rounded <= 0.0 or v <= 0.0:
+        return eps
+    if rounded >= 1.0 or v >= 1.0:
         return 1.0 - eps
-    return value
+    return float(rounded)
 
 
 def _sanitize_action_str(s: str) -> str:
@@ -58,9 +64,9 @@ def _log_step(
 
 def _log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    score_clamped = min(1.0, max(0.0, score))
+    score_safe = _strict_unit_interval(score)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score_clamped:.2f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={score_safe:.6f} rewards={rewards_str}",
         flush=True,
     )
 
