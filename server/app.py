@@ -1,14 +1,14 @@
 """
-OpenEnv multi-mode entry: `server.app:app` and a callable `main()` in this module.
+OpenEnv multi-mode entry: `server.app:app` and local `main()`.
 
-Core FastAPI app is built in `mujoco_gym_env.server.app`.
+Implementation: drug_discovery_env.server.app
 """
 
 from __future__ import annotations
 
 import os
 
-from mujoco_gym_env.server.app import app
+from drug_discovery_env.server.app import app
 
 __all__ = ["app", "main"]
 

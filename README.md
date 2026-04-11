@@ -1,138 +1,91 @@
 ---
-title: MuJoCo Gym OpenEnv
-emoji: "🦎"
-colorFrom: gray
-colorTo: green
+title: Drug Discovery OpenEnv
+emoji: "🧬"
+colorFrom: purple
+colorTo: blue
 sdk: docker
 app_port: 7860
-short_description: "OpenEnv MuJoCo Gymnasium v5 — 3 physics control tasks"
+short_description: "Lead optimization OpenEnv: RDKit, SMILES, structured actions, 5 tasks"
 ---
 
-# MuJoCo Gym OpenEnv
+# Drug Discovery OpenEnv — Lead Optimization Agent
 
-**OpenEnv** environment for **MuJoCo physics** through **Gymnasium v5**: real continuous control, dense rewards, and a **deterministic grader**—a strong complement to text-only or calendar-style envs.
+**OpenEnv** environment for **agentic medicinal chemistry**: start from a **seed SMILES**, apply **structured edits**, read **RDKit descriptors**, and optimize toward a **target profile** with a **deterministic grader**.
 
-## Why this is a strong evaluation surface
+## Why this case study
 
-- **Real physics**: MuJoCo dynamics, contact, and torque limits—not a hand-written state machine.
-- **Partial observability only through the simulator**: agents consume **vector observations** and emit **boxed actions** (no hidden “oracle” shortcuts).
-- **Multi-task ramp**: **easy → medium → hard** (`InvertedPendulum-v5`, `Hopper-v5`, `HalfCheetah-v5`).
-- **Same deployment pattern as reference OpenEnv repos**: Pydantic **Action / Observation / State**, `Environment` implementation, **FastAPI + `HTTPEnvServer`**, **`/health`**, WebSocket **`/ws`**, HTTP **`/reset`**, **`/step`**, **`/state`**, **`/tasks`**, **`/grader`**.
+- **Real workflow**: lead optimization loops (edit → measure → tradeoffs), not toy chat.
+- **Tool-like actions**: typed JSON actions (not free-text-only agents).
+- **Measurable science**: MW, LogP, HBD/HBA, TPSA, **QED**, **SA score**, **PAINS-like alerts**, **affinity proxy** (Morgan Tanimoto to a reference ligand).
+- **Multi-task**: five episodes (lead opt, toxicity-aware, scaffold hop, multi-objective, ADMET rescue).
 
-## Tasks (fixed evaluation order)
+## Tasks (fixed order)
 
-| `task_id` | Gymnasium env | Rank |
-|-----------|---------------|------|
-| `inverted_pendulum_v5` | `InvertedPendulum-v5` | easy |
-| `hopper_v5` | `Hopper-v5` | medium |
-| `halfcheetah_v5` | `HalfCheetah-v5` | hard |
+1. `lead_optimization_basic` — easy  
+2. `toxicity_aware_optimization` — medium  
+3. `scaffold_hop_challenge` — medium (Murcko scaffold change required to pass)  
+4. `multi_objective_balance` — hard  
+5. `admet_logp_rescue` — hard (lipophilic rescue)
 
-## Action & observation
+## Actions (`DrugDiscoveryAction`)
 
-- **Action** (`MuJoCoAction`): `control: list[float]` with length = environment `action_dim` (invalid length → penalty, episode continues).
-- **Observation** (`MuJoCoObservation`): `obs` (flattened float vector), `action_dim`, `obs_dim`, `max_episode_steps`, `step_count`, `reward`, `done`, plus `last_info` from Gymnasium.
+| `action_type` | Role |
+|---------------|------|
+| `add_group` | Canned reaction (`group_key`: `methyl_aromatic`, `fluoro_aromatic`, …) |
+| `replace_substructure` | RDKit `ReplaceSubstructs` (`query_smarts`, `replacement_smiles`) |
+| `remove_group` | `DeleteSubstructs` (`query_smarts`) |
+| `bioisostere_swap` | Canned map (`bioisostere_key`: `hydroxyl_to_fluoro`, `nitro_to_amino`, …) |
+| `score_molecule` | Registers measurement (required for grader workflow) |
+| `compare_candidates` | Picks among `candidate_pool` by composite proxy |
+| `stop_and_submit` | Ends episode (required for full pass) |
+
+## Reward (step)
+
+Weighted mix of **affinity proxy**, **QED**, **toxicity alerts**, **SA**, and **constraint violations** vs task `target_profile`, plus deltas vs previous step.
 
 ## Quick start
 
 ```powershell
-cd D:\path\to\mujoco-gym-openenv
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install --upgrade pip
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m drug_discovery_env.server
 ```
 
-### API server
-
-```powershell
-.venv\Scripts\python.exe -m mujoco_gym_env.server
-```
-
-- Docs: `http://127.0.0.1:8000/docs` (or `PORT` / `7860` on Spaces)
+- Docs: `http://127.0.0.1:8000/docs`  
 - Health: `GET /health`
 
-### Baseline (random policy, one episode per task)
-
 ```powershell
-.venv\Scripts\python.exe -m mujoco_gym_env.baseline
+.venv\Scripts\python -m drug_discovery_env.baseline
 ```
 
-### Lockfile (multi-mode / `uv`)
+## `inference.py` (hackathon)
+
+- `API_BASE_URL`, `MODEL_NAME`, **`HF_TOKEN` or `API_KEY`**, optional `BENCHMARK`, `LOCAL_IMAGE_NAME` / `IMAGE_NAME`.
+- **OpenAI** client hits the proxy once per task; rollouts use the **heuristic** policy (stable SMILES pipeline).
+- Stdout: **`[START]`** / **`[STEP]`** / **`[END]`** only.
+
+```powershell
+$env:HF_TOKEN="..."; .venv\Scripts\python inference.py
+```
+
+## Layout
+
+| Layer | Path |
+|--------|------|
+| Models | `drug_discovery_env/models.py` |
+| RDKit engine | `drug_discovery_env/chemistry.py` |
+| Environment | `drug_discovery_env/server/drug_discovery_environment.py` |
+| Server | `drug_discovery_env/server/app.py` + **`server/app.py`** (multi-mode) |
+| Tasks | `drug_discovery_env/tasks/catalog.json` |
+
+## Lockfile
 
 ```powershell
 uv lock --python 3.11
 ```
 
-Commit the generated **`uv.lock`** so OpenEnv multi-mode checks pass.
+Commit **`uv.lock`** for multi-mode checks.
 
-### Validator-style `inference.py`
+## References
 
-Matches the **hackathon inference spec**:
-
-| Variable | Role |
-|----------|------|
-| `API_BASE_URL` | LLM endpoint (default: `https://router.huggingface.co/v1`) |
-| `MODEL_NAME` | Model id (default: `openai/gpt-4.1-mini`) |
-| `HF_TOKEN` | **Preferred** API key for the proxy (same as Hugging Face token) |
-| `API_KEY` | Alternative if `HF_TOKEN` is unset |
-| `BENCHMARK` | Logged as `env=` in `[START]` (default: `mujoco_gym_env`) |
-| `LOCAL_IMAGE_NAME` / `IMAGE_NAME` | For `from_docker_image()` flows only; read for compatibility, unused in-process |
-
-- **OpenAI client:** `OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or API_KEY)`.
-- **LLM traffic:** each task does a minimal **`chat.completions`** (fallback **`responses`**) so LiteLLM sees your key; MuJoCo torques stay **random** for stability.
-- **Stdout:** only `[START]` → one `[STEP]` per `env.step()` → `[END]` after `env.close()` (always, including on errors). Rewards **`%.2f`**; end score **`%.2f`** in `[0, 1]`.
-
-```powershell
-$env:HF_TOKEN="..."; .venv\Scripts\python.exe inference.py
-```
-
-Local validation (optional): Docker build + `openenv validate` as in the official `validate-submission.sh` pattern (Dockerfile at **repo root**).
-
-## OpenEnv layout
-
-| Layer | Path |
-|--------|------|
-| Models | [mujoco_gym_env/models.py](mujoco_gym_env/models.py) |
-| Environment | [mujoco_gym_env/server/mujoco_gym_environment.py](mujoco_gym_env/server/mujoco_gym_environment.py) |
-| Server | [mujoco_gym_env/server/app.py](mujoco_gym_env/server/app.py); HF / multi-mode entry [server/app.py](server/app.py) |
-| Client | [mujoco_gym_env/client.py](mujoco_gym_env/client.py) |
-| Manifest | [openenv.yaml](openenv.yaml) |
-
-## Project structure
-
-```text
-├── mujoco_gym_env/
-│   ├── baseline.py
-│   ├── client.py
-│   ├── environment.py
-│   ├── models.py
-│   └── server/
-│       ├── app.py
-│       └── mujoco_gym_environment.py
-├── server/
-│   ├── __init__.py
-│   └── app.py
-├── scripts/
-│   ├── run_baseline.py
-│   └── smoke_mujoco_gym.py
-├── docs/
-│   └── ENVIRONMENT_DESIGN.md
-├── Dockerfile
-├── openenv.yaml
-├── inference.py
-├── pyproject.toml
-└── requirements.txt
-```
-
-## Learning resources
-
-- [OpenEnv tutorials](https://github.com/meta-pytorch/OpenEnv/tree/main/tutorial)
-- [Building RL Environments with OpenEnv](https://github.com/raun/openenv-course/tree/main)
-- [Gymnasium MuJoCo envs](https://gymnasium.farama.org/environments/mujoco/)
-
-## Grader
-
-The grader combines **episode length progress**, **normalized return** (per-task scale), **early-failure penalty** (terminate without truncation), and **invalid-action** penalties. Scores are clamped to a strict **(0, 1)** interval for parsers that reject `0.0` / `1.0` endpoints.
-
----
-
-*PyPI / install name: `mujoco-gym-openenv` (`pip install -e .` from this repo).*
+- [OpenEnv](https://github.com/meta-pytorch/OpenEnv) · [RDKit](https://www.rdkit.org/)

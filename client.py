@@ -1,5 +1,5 @@
-"""Shim for `from client import MuJoCoGymEnvClient` at repo root."""
+"""Shim for EnvClient at repo root."""
 
-from mujoco_gym_env.client import MuJoCoGymEnvClient
+from drug_discovery_env.client import DrugDiscoveryEnvClient
 
-__all__ = ["MuJoCoGymEnvClient"]
+__all__ = ["DrugDiscoveryEnvClient"]

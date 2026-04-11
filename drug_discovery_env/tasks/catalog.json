@@ -1,0 +1,164 @@
+[
+  {
+    "task_id": "lead_optimization_basic",
+    "difficulty": "easy",
+    "description": "Improve a simple aromatic lead toward drug-like properties and better overlap with a reference chemotype.",
+    "objective": "Raise QED and affinity_proxy while staying within MW and LogP windows; call score_molecule at least once; stop_and_submit when satisfied.",
+    "seed_smiles": "Cc1ccccc1O",
+    "reference_smiles": "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+    "target_profile": {
+      "max_mw": 500,
+      "logp_min": 0.5,
+      "logp_max": 4.5,
+      "min_qed": 0.25,
+      "max_tpsa": 120
+    },
+    "reward_weights": {
+      "affinity": 1.1,
+      "qed": 1.0,
+      "toxicity": 0.6,
+      "sa": 0.12,
+      "constraints": 0.9
+    },
+    "ground_truth": {
+      "min_final_qed": 0.32,
+      "min_affinity_proxy": 0.08,
+      "max_toxicity_proxy": 3,
+      "max_mw": 520,
+      "logp_min": 0.3,
+      "logp_max": 5.0,
+      "require_score_action": true,
+      "require_submission": true
+    }
+  },
+  {
+    "task_id": "toxicity_aware_optimization",
+    "difficulty": "medium",
+    "description": "Start from a nitro-aromatic; reduce PAINS-like alert burden while improving drug-likeness.",
+    "objective": "Lower toxicity_proxy (alerts) and improve QED without exploding MW.",
+    "seed_smiles": "O=[N+]([O-])c1ccccc1",
+    "reference_smiles": "Nc1ccccc1",
+    "target_profile": {
+      "max_mw": 500,
+      "logp_min": 0.2,
+      "logp_max": 4.0,
+      "min_qed": 0.2,
+      "max_tpsa": 140
+    },
+    "reward_weights": {
+      "affinity": 0.8,
+      "qed": 1.1,
+      "toxicity": 1.4,
+      "sa": 0.15,
+      "constraints": 1.0
+    },
+    "ground_truth": {
+      "min_final_qed": 0.28,
+      "min_affinity_proxy": 0.05,
+      "max_toxicity_proxy": 2,
+      "max_mw": 520,
+      "logp_min": 0.0,
+      "logp_max": 5.0,
+      "require_score_action": true,
+      "require_submission": true
+    }
+  },
+  {
+    "task_id": "scaffold_hop_challenge",
+    "difficulty": "medium",
+    "description": "Move from a bicyclic aromatic toward a different scaffold while tracking similarity to a target reference.",
+    "objective": "Edit the molecule so Murcko scaffold changes meaningfully while affinity_proxy to the new reference stays above a floor.",
+    "seed_smiles": "c1ccc2ccccc2c1",
+    "reference_smiles": "Cc1ccncc1",
+    "target_profile": {
+      "max_mw": 450,
+      "logp_min": 0.5,
+      "logp_max": 4.0,
+      "min_qed": 0.22,
+      "max_tpsa": 90
+    },
+    "reward_weights": {
+      "affinity": 1.3,
+      "qed": 0.85,
+      "toxicity": 0.5,
+      "sa": 0.18,
+      "constraints": 1.0
+    },
+    "ground_truth": {
+      "min_final_qed": 0.25,
+      "min_affinity_proxy": 0.1,
+      "max_toxicity_proxy": 3,
+      "max_mw": 480,
+      "logp_min": 0.2,
+      "logp_max": 5.0,
+      "require_score_action": true,
+      "require_submission": true,
+      "scaffold_change_required": true
+    }
+  },
+  {
+    "task_id": "multi_objective_balance",
+    "difficulty": "hard",
+    "description": "Balance potency proxy, QED, and synthesizability under tight ADMET-style windows.",
+    "objective": "Optimize composite score while satisfying MW, LogP, and TPSA caps.",
+    "seed_smiles": "COc1ccc(C(C)=O)cc1",
+    "reference_smiles": "COc1ccc(CC(=O)O)cc1",
+    "target_profile": {
+      "max_mw": 420,
+      "logp_min": 1.0,
+      "logp_max": 3.5,
+      "min_qed": 0.3,
+      "max_tpsa": 100
+    },
+    "reward_weights": {
+      "affinity": 1.0,
+      "qed": 1.0,
+      "toxicity": 0.7,
+      "sa": 0.25,
+      "constraints": 1.2
+    },
+    "ground_truth": {
+      "min_final_qed": 0.35,
+      "min_affinity_proxy": 0.12,
+      "max_toxicity_proxy": 2,
+      "max_mw": 440,
+      "logp_min": 0.8,
+      "logp_max": 4.0,
+      "require_score_action": true,
+      "require_submission": true
+    }
+  },
+  {
+    "task_id": "admet_logp_rescue",
+    "difficulty": "hard",
+    "description": "A lipophilic lead must be rescued: bring LogP and MW toward acceptable range while keeping affinity proxy.",
+    "objective": "Reduce excessive lipophilicity (LogP) or MW using polar edits or removals.",
+    "seed_smiles": "CCCCCCc1ccccc1",
+    "reference_smiles": "CCCCc1ccccc1",
+    "target_profile": {
+      "max_mw": 480,
+      "logp_min": 1.0,
+      "logp_max": 4.0,
+      "min_qed": 0.25,
+      "max_tpsa": 80
+    },
+    "reward_weights": {
+      "affinity": 1.0,
+      "qed": 0.9,
+      "toxicity": 0.5,
+      "sa": 0.1,
+      "constraints": 1.5
+    },
+    "ground_truth": {
+      "min_final_qed": 0.3,
+      "min_affinity_proxy": 0.15,
+      "max_toxicity_proxy": 3,
+      "max_mw": 500,
+      "logp_min": 1.0,
+      "logp_max": 4.5,
+      "require_score_action": true,
+      "require_submission": true,
+      "max_final_logp": 4.2
+    }
+  }
+]

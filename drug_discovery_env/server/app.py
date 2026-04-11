@@ -12,30 +12,36 @@ from openenv.core.env_server import HTTPEnvServer, ServerMode
 from openenv.core.env_server.serialization import serialize_observation
 from openenv.core.env_server.types import ResetResponse, StepResponse
 
-from ..models import GraderResult, MuJoCoAction, MuJoCoObservation, MuJoCoState, TasksResponse
-from .mujoco_gym_environment import MuJoCoGymEnvironment
+from ..models import (
+    DrugDiscoveryAction,
+    DrugDiscoveryObservation,
+    DrugDiscoveryState,
+    GraderResult,
+    TasksResponse,
+)
+from .drug_discovery_environment import DrugDiscoveryEnvironment
 
 app = FastAPI(
-    title="MuJoCo Gym OpenEnv",
-    description="Gymnasium MuJoCo multi-task suite (OpenEnv HTTP/WebSocket server).",
+    title="Drug Discovery OpenEnv",
+    description="Lead optimization agent environment (RDKit + OpenEnv).",
     version="1.0.0",
 )
 
 openenv_server = HTTPEnvServer(
-    MuJoCoGymEnvironment,
-    MuJoCoAction,
-    MuJoCoObservation,
-    max_concurrent_envs=4,
+    DrugDiscoveryEnvironment,
+    DrugDiscoveryAction,
+    DrugDiscoveryObservation,
+    max_concurrent_envs=8,
 )
 openenv_server.register_routes(app, mode=ServerMode.PRODUCTION)
 
-http_env = MuJoCoGymEnvironment()
+http_env = DrugDiscoveryEnvironment()
 
 
 @app.get("/")
 def root() -> dict[str, object]:
     return {
-        "name": "mujoco_gym_env",
+        "name": "drug_discovery_env",
         "status": "ok",
         "framework": "openenv",
         "task_count": len(http_env.list_tasks()),
@@ -66,22 +72,19 @@ def reset_environment(payload: dict[str, Any] = Body(default_factory=dict)) -> R
         observation = http_env.reset(task_id=task_id, seed=seed, episode_id=episode_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return ResetResponse(**serialize_observation(observation))
 
 
 @app.post("/step", response_model=StepResponse)
-def step_environment(action: MuJoCoAction) -> StepResponse:
-    try:
-        observation = http_env.step(action)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+def step_environment(action: DrugDiscoveryAction) -> StepResponse:
+    observation = http_env.step(action)
     return StepResponse(**serialize_observation(observation))
 
 
-@app.get("/state", response_model=MuJoCoState)
-def current_state() -> MuJoCoState:
+@app.get("/state", response_model=DrugDiscoveryState)
+def current_state() -> DrugDiscoveryState:
     return http_env.state
 
 
@@ -94,7 +97,7 @@ def grader() -> GraderResult:
 def tasks() -> TasksResponse:
     return TasksResponse(
         tasks=http_env.list_tasks(),
-        action_schema=MuJoCoAction.model_json_schema(),
+        action_schema=DrugDiscoveryAction.model_json_schema(),
     )
 
 

@@ -1,9 +1,9 @@
 spec_version: 1
-name: mujoco_gym_env
+name: drug_discovery_env
 version: "1.0.0"
 description: >
-  OpenEnv MuJoCo continuous control via Gymnasium v5: InvertedPendulum, Hopper, HalfCheetah,
-  vector observations, boxed actions, deterministic grader, FastAPI + WebSocket, /health.
+  Agentic lead optimization OpenEnv: seed SMILES, RDKit descriptors (MW, LogP, QED, SA, PAINS proxy),
+  structured actions (replace/remove/bioisostere/score/submit), five tasks, deterministic grader, /health.
 type: space
 runtime: fastapi
 app: server.app:app

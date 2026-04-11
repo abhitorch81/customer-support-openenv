@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mujoco-gym-openenv"
+name = "drug-discovery-openenv"
 version = "1.0.0"
-description = "OpenEnv MuJoCo continuous-control suite (Gymnasium v5): pendulum, hopper, half-cheetah, FastAPI server, deterministic grader."
+description = "OpenEnv lead optimization: SMILES, RDKit descriptors, structured medicinal-chemistry actions, multi-task grading."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,8 +16,7 @@ dependencies = [
   "pyyaml>=6.0.2",
   "requests>=2.32.0",
   "uvicorn>=0.34.0",
-  "gymnasium[mujoco]>=1.0.0",
-  "numpy>=1.24.0",
+  "rdkit>=2023.3.1",
 ]
 
 [project.optional-dependencies]
@@ -27,11 +26,14 @@ dev = [
 
 [project.scripts]
 server = "server.app:main"
-mujoco-gym-server = "server.app:main"
-mujoco-gym-baseline = "mujoco_gym_env.baseline:main"
+drug-discovery-server = "server.app:main"
+drug-discovery-baseline = "drug_discovery_env.baseline:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["mujoco_gym_env*", "server*"]
+include = ["drug_discovery_env*", "server*"]
+
+[tool.setuptools.package-data]
+drug_discovery_env = ["tasks/*.json"]

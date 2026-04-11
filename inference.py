@@ -1,16 +1,8 @@
 """
-Inference script (hackathon spec).
+Hackathon inference script — lead optimization OpenEnv.
 
-MANDATORY env (see README):
-  API_BASE_URL   — LLM endpoint (default: Hugging Face router).
-  MODEL_NAME     — model id (default set below).
-  HF_TOKEN       — preferred; or API_KEY for the same proxy credential.
-
-Optional:
-  BENCHMARK      — logged as env= in [START] (default: mujoco_gym_env).
-  LOCAL_IMAGE_NAME / IMAGE_NAME — only if using OpenEnv from_docker_image(); not used here.
-
-STDOUT: only [START], [STEP], [END] lines; [END] always after env.close(), even on exception.
+Env: API_BASE_URL, MODEL_NAME, HF_TOKEN or API_KEY, BENCHMARK (optional).
+Stdout: [START] / [STEP] / [END] only.
 """
 
 from __future__ import annotations
@@ -20,16 +12,14 @@ from typing import List, Optional
 
 from openai import OpenAI
 
-from mujoco_gym_env.baseline import RandomPolicy
-from mujoco_gym_env.environment import MuJoCoGymEnvironment
-from mujoco_gym_env.models import MuJoCoAction, MuJoCoObservation
+from drug_discovery_env.baseline import HeuristicPolicy
+from drug_discovery_env.environment import DrugDiscoveryEnvironment
+from drug_discovery_env.models import DrugDiscoveryAction, DrugDiscoveryObservation
 
-# Defaults per spec — align with your active inference setup / Space secrets.
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "openai/gpt-4.1-mini"
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-BENCHMARK = os.getenv("BENCHMARK", "mujoco_gym_env")
-# Reserved for docker-based OpenEnv clients (validate-submission / from_docker_image).
+BENCHMARK = os.getenv("BENCHMARK", "drug_discovery_env")
 _LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME")
 
 
@@ -75,33 +65,40 @@ def _log_end(success: bool, steps: int, score: float, rewards: List[float]) -> N
     )
 
 
-def _format_action_safe(action: MuJoCoAction) -> str:
+def _format_action(a: DrugDiscoveryAction) -> str:
+    parts = [a.action_type.value]
+    if a.group_key:
+        parts.append(f"group={a.group_key}")
+    if a.bioisostere_key:
+        parts.append(f"bio={a.bioisostere_key}")
+    if a.query_smarts:
+        parts.append(f"smarts={a.query_smarts}")
+    if a.replacement_smiles:
+        parts.append(f"repl={a.replacement_smiles}")
+    if a.candidate_indices:
+        parts.append(f"idx={a.candidate_indices}")
+    return "|".join(parts)
+
+
+def _format_action_safe(a: DrugDiscoveryAction) -> str:
     try:
-        c = action.control or []
-        if len(c) <= 4:
-            return f"control({c})"
-        return f"control(dim={len(c)})"
+        return _format_action(a)
     except Exception:
-        return "control([])"
+        return a.action_type.value
 
 
 def _act_safely(
     policy: object,
-    fallback: RandomPolicy,
-    observation: MuJoCoObservation,
-) -> MuJoCoAction:
+    fallback: HeuristicPolicy,
+    observation: DrugDiscoveryObservation,
+) -> DrugDiscoveryAction:
     try:
         return policy.act(observation)  # type: ignore[attr-defined]
     except Exception:
-        try:
-            return fallback.act(observation)
-        except Exception:
-            dim = max(1, observation.action_dim)
-            return MuJoCoAction(control=[0.0] * dim)
+        return fallback.act(observation)
 
 
 def _llm_proxy_ping(client: OpenAI, model: str) -> None:
-    """At least one OpenAI client call through API_BASE_URL (Phase 2 LiteLLM visibility)."""
     try:
         client.chat.completions.create(
             model=model,
@@ -113,18 +110,16 @@ def _llm_proxy_ping(client: OpenAI, model: str) -> None:
 
 
 def main() -> None:
-    _ = _LOCAL_IMAGE_NAME  # explicit read so tooling sees optional docker image name
+    _ = _LOCAL_IMAGE_NAME
 
     if not API_KEY:
-        raise RuntimeError(
-            "HF_TOKEN or API_KEY must be set for OpenAI(base_url=API_BASE_URL, api_key=...)."
-        )
+        raise RuntimeError("HF_TOKEN or API_KEY must be set.")
 
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    env = MuJoCoGymEnvironment()
-    fallback_policy = RandomPolicy()
-    policy: object = RandomPolicy()
+    env = DrugDiscoveryEnvironment()
+    fallback_policy = HeuristicPolicy()
+    policy: object = HeuristicPolicy()
 
     for task in env.list_tasks():
         task_id = task.metadata.task_id
@@ -136,15 +131,14 @@ def main() -> None:
         score = 0.0
 
         try:
-            # OpenAI client call — must go through injected proxy (HF_TOKEN / API_KEY).
             _llm_proxy_ping(client, MODEL_NAME)
 
             env.select_task(task_id)
             observation = env.reset()
             done = observation.done
-            max_extra = int(os.getenv("MUJOCO_INFERENCE_MAX_STEPS", "5000"))
+            max_steps_cap = int(os.getenv("DRUG_DISCOVERY_MAX_STEPS", "500"))
 
-            while not done and steps_taken < max_extra:
+            while not done and steps_taken < max_steps_cap:
                 step_error: Optional[str] = None
                 try:
                     action = _act_safely(policy=policy, fallback=fallback_policy, observation=observation)
@@ -181,7 +175,7 @@ def main() -> None:
 
             grader = env.grade_current_episode()
             score = _strict_unit_interval(float(grader.score))
-            success = bool(getattr(grader, "passed", False)) or score >= 0.8
+            success = bool(getattr(grader, "passed", False)) or score >= 0.72
         except Exception:
             score = _strict_unit_interval(0.0)
             success = False

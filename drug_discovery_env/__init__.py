@@ -1,6 +1,8 @@
-"""Shim for typed models at repo root."""
+"""Lead optimization / drug discovery OpenEnv (RDKit)."""
 
-from drug_discovery_env.models import (
+from .baseline import HeuristicPolicy, main as run_baseline_main
+from .environment import DrugDiscoveryEnvironment
+from .models import (
     ActionType,
     Difficulty,
     DrugDiscoveryAction,
@@ -16,10 +18,13 @@ __all__ = [
     "ActionType",
     "Difficulty",
     "DrugDiscoveryAction",
+    "DrugDiscoveryEnvironment",
     "DrugDiscoveryObservation",
     "DrugDiscoveryState",
     "GraderResult",
+    "HeuristicPolicy",
     "TaskDescriptor",
     "TaskMetadata",
     "TasksResponse",
+    "run_baseline_main",
 ]

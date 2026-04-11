@@ -1,1 +1,0 @@
-# MuJoCo Gym OpenEnv server
