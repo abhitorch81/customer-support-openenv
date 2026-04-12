@@ -68,6 +68,15 @@ python -m venv .venv
 $env:HF_TOKEN="..."; .venv\Scripts\python inference.py
 ```
 
+## Tests
+
+```powershell
+uv sync --extra dev
+uv run pytest tests/ -q
+```
+
+Covers strict **(0, 1)** grader scores (validator contract), `GraderResult` / `breakdown` validation, all five tasks after `reset`, and basic `step` / `stop_and_submit` smoke checks.
+
 ## Layout
 
 | Layer | Path |

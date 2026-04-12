@@ -37,3 +37,9 @@ include = ["drug_discovery_env*", "server*"]
 
 [tool.setuptools.package-data]
 drug_discovery_env = ["tasks/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore:please use MorganGenerator:UserWarning",
+]
