@@ -19,11 +19,6 @@ dependencies = [
   "rdkit>=2023.3.1",
 ]
 
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.0.0",
-]
-
 [project.scripts]
 server = "server.app:main"
 drug-discovery-server = "server.app:main"
@@ -37,9 +32,3 @@ include = ["drug_discovery_env*", "server*"]
 
 [tool.setuptools.package-data]
 drug_discovery_env = ["tasks/*.json"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-filterwarnings = [
-  "ignore:please use MorganGenerator:UserWarning",
-]
